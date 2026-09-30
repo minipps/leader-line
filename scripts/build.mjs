@@ -45,8 +45,10 @@ async function getCode() {
     if (!(name in context)) throw new Error(`src/defs.js does not define ${name}`);
     code[name] = toCode(context[name], sentinel);
   }
-  code.anim = (await read('src/anim.js')).replace(RE_EXPORT, '$1');
-  code.pathDataPolyfill = (await read('src/path-data-polyfill/path-data-polyfill.js')).replace(RE_EXPORT, '$1');
+  // An expression, included as an initializer: without the statement's semicolon, if any.
+  const pickExport = async (path) => (await read(path)).replace(RE_EXPORT, '$1').replace(/;$/, '');
+  code.anim = await pickExport('src/anim.js');
+  code.pathDataPolyfill = await pickExport('src/path-data-polyfill/path-data-polyfill.js');
   return code;
 }
 
@@ -58,7 +60,16 @@ const source = (await read('src/leader-line.js')).replace(RE_INCLUDE, (match, na
 });
 
 const banner = `/*! ${pkg.title || pkg.name} v${pkg.version} (c) ${pkg.author.name} ${pkg.homepage} */\n`;
-const minified = minifySync('leader-line.js', removeTag('DEBUG', source), {
+const released = removeTag('DEBUG', source);
+// A marker the formatter moved away from the code it tags leaves debug code behind.
+for (const leftover of [/\[\s*\/?\s*DEBUG\s*\/?\s*\]/, /\btraceLog\s*\./]) {
+  const match = leftover.exec(released);
+  if (match)
+    throw new Error(
+      `Debug code left after removing [DEBUG] regions: ${released.slice(match.index - 80, match.index + 80)}`,
+    );
+}
+const minified = minifySync('leader-line.js', released, {
   compress: { target: 'es2022' },
   mangle: { toplevel: false },
   codegen: { removeWhitespace: true },

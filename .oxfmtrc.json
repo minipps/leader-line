@@ -16,5 +16,15 @@
     "test/**/*.scss",
     "!test/build/**",
     "!test/reporter.js"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "src/**/*.js"
+      ],
+      "options": {
+        "trailingComma": "none"
+      }
+    }
   ]
 }
