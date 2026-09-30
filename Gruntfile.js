@@ -16,6 +16,9 @@ module.exports = grunt => {
     SRC_DIR_PATH = pathUtil.join(ROOT_PATH, 'src'),
     CSS_PATH = pathUtil.join(SRC_DIR_PATH, 'leader-line.css'),
     DEST_DIR_PATH = pathUtil.join(ROOT_PATH, 'leader-line.min.js'),
+    ESM_PATH = pathUtil.join(ROOT_PATH, 'leader-line.mjs'),
+    TYPES_PATH = pathUtil.join(ROOT_PATH, 'types', 'leader-line.d.ts'),
+    ESM_TYPES_PATH = pathUtil.join(ROOT_PATH, 'types', 'leader-line.d.mts'),
 
     PACK_LIBS = [
       ['anim', 'anim.js'],
@@ -166,17 +169,32 @@ module.exports = grunt => {
                 .replace(keyPath[2] || reEXPORT, '$1');
             });
 
-            const banner = `/*! ${PKG.title || PKG.name} v${PKG.version} (c) ${PKG.author.name} ${PKG.homepage} */\n`;
-            return banner + minJs(preProc.removeTag('DEBUG',
-              content.replace(/@INCLUDE\[code:([^\n]+?)\]@/g,
-                (s, codeKey) => {
-                  if (typeof code[codeKey] !== 'string') {
-                    grunt.fail.fatal(`File doesn't exist code: ${codeKey}`);
+            const banner = `/*! ${PKG.title || PKG.name} v${PKG.version} (c) ${PKG.author.name} ${PKG.homepage} */\n`,
+              // `var LeaderLine=function(){...}();`
+              minCode = minJs(preProc.removeTag('DEBUG',
+                content.replace(/@INCLUDE\[code:([^\n]+?)\]@/g,
+                  (s, codeKey) => {
+                    if (typeof code[codeKey] !== 'string') {
+                      grunt.fail.fatal(`File doesn't exist code: ${codeKey}`);
+                    }
+                    return code[codeKey];
                   }
-                  return code[codeKey];
-                }
-              )
-            ));
+                )
+              ));
+
+            // ES module
+            grunt.file.write(ESM_PATH, `${banner}${minCode}export default LeaderLine;\n`);
+            grunt.log.writeln(`File "${ESM_PATH}" created.`);
+            grunt.file.write(ESM_TYPES_PATH,
+              fs.readFileSync(TYPES_PATH, {encoding: 'utf8'})
+                .replace(/^export = LeaderLine;$/m, 'export default LeaderLine;'));
+            grunt.log.writeln(`File "${ESM_TYPES_PATH}" created.`);
+
+            // UMD: CommonJS, AMD, or the `LeaderLine` global of a classic script
+            return `${banner}(function(root,factory){` +
+              'typeof exports==="object"&&typeof module!=="undefined"?module.exports=factory():' +
+              'typeof define==="function"&&define.amd?define([],factory):root.LeaderLine=factory();' +
+              `})(typeof self!=="undefined"?self:this,function(){${minCode}return LeaderLine;});\n`;
           }
         },
         src: `${SRC_DIR_PATH}/leader-line.js`,

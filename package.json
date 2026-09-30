@@ -1,8 +1,9 @@
 {
-  "name": "leader-line",
-  "version": "1.0.8",
+  "name": "@minipps/leader-line",
+  "version": "1.1.0",
   "title": "LeaderLine",
-  "description": "Draw a leader line in your web page.",
+  "description": "Draw a leader line in your web page. A maintained fork of anseki/leader-line with ES module and TypeScript support.",
+  "type": "commonjs",
   "keywords": [
     "leader",
     "line",
@@ -12,13 +13,33 @@
     "highlight",
     "spotlight",
     "bubble",
-    "svg"
+    "svg",
+    "esm",
+    "typescript"
   ],
   "main": "leader-line.min.js",
+  "module": "leader-line.mjs",
+  "types": "types/leader-line.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./types/leader-line.d.mts",
+        "default": "./leader-line.mjs"
+      },
+      "require": {
+        "types": "./types/leader-line.d.ts",
+        "default": "./leader-line.min.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "leader-line.min.js",
-    "bower.json"
+    "leader-line.mjs",
+    "types/leader-line.d.ts",
+    "types/leader-line.d.mts"
   ],
+  "sideEffects": true,
   "devDependencies": {
     "anim-event": "^1.0.16",
     "cheerio": "^1.0.0-rc.9",
@@ -35,17 +56,28 @@
     "uglify-js": "^3.13.7"
   },
   "scripts": {
-    "test": "node ./test/httpd"
+    "build": "grunt build",
+    "test": "node ./test/httpd",
+    "prepublishOnly": "grunt build"
   },
-  "homepage": "https://anseki.github.io/leader-line/",
+  "homepage": "https://github.com/minipps/leader-line#readme",
   "repository": {
     "type": "git",
-    "url": "git://github.com/anseki/leader-line.git"
+    "url": "git+https://github.com/minipps/leader-line.git"
   },
-  "bugs": "https://github.com/anseki/leader-line/issues",
+  "bugs": "https://github.com/minipps/leader-line/issues",
   "license": "MIT",
   "author": {
     "name": "anseki",
     "url": "https://github.com/anseki"
+  },
+  "contributors": [
+    {
+      "name": "minipps",
+      "url": "https://github.com/minipps"
+    }
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }
