@@ -108,7 +108,10 @@ var LeaderLine = (() => {
   const MIN_GRID_LEN = 30;
   const CIRCLE_CP = 0.5522847;
   const CIRCLE_8_RAD = (1 / 4) * Math.PI;
-  const RE_PERCENT = /^\s*(\-?[\d\.]+)\s*(\%)?\s*$/;
+  const RE_PERCENT = /^\s*(-?[\d.]+)\s*(%)?\s*$/;
+  const RE_COLOR_FUNC = /^(rgba|hsla|hwb|gray|device-cmyk)\s*\(([\s\S]+)\)$/i;
+  const RE_COLOR_ARGS_SEPARATOR = /\s*,\s*/;
+  const RE_COLOR_HEX_ALPHA = /^#(?:([\da-f]{6})([\da-f]{2})|([\da-f]{3})([\da-f]))$/i;
   const SVG_NS = 'http://www.w3.org/2000/svg';
   let IS_GECKO = 'MozAppearance' in document.documentElement.style;
 
@@ -146,7 +149,7 @@ var LeaderLine = (() => {
         obj &&
         toString.call(obj) === '[object Object]' &&
         (!(proto = Object.getPrototypeOf(obj)) ||
-          ((constructor = proto.hasOwnProperty('constructor') && proto.constructor) &&
+          ((constructor = Object.hasOwn(proto, 'constructor') && proto.constructor) &&
             typeof constructor === 'function' &&
             fnToString.call(constructor) === objFnString))
       );
@@ -174,12 +177,10 @@ var LeaderLine = (() => {
     let requestId, lastEvent;
     return (event) => {
       lastEvent = event;
-      if (requestId == null) {
-        requestId = window.requestAnimationFrame(() => {
-          requestId = null;
-          listener(lastEvent);
-        });
-      }
+      requestId ??= window.requestAnimationFrame(() => {
+        requestId = null;
+        listener(lastEvent);
+      });
     };
   };
 
@@ -346,9 +347,9 @@ var LeaderLine = (() => {
     }
 
     // Unsupported: `currentcolor`, `color()`, `deprecated-system-color`
-    if ((matches = /^(rgba|hsla|hwb|gray|device\-cmyk)\s*\(([\s\S]+)\)$/i.exec(color))) {
+    if ((matches = RE_COLOR_FUNC.exec(color))) {
       func = matches[1].toLowerCase();
-      args = matches[2].trim().split(/\s*,\s*/);
+      args = matches[2].trim().split(RE_COLOR_ARGS_SEPARATOR);
       if (func === 'rgba' && args.length === 4) {
         alpha = parseAlpha(args[3]);
         baseColor = 'rgb(' + args.slice(0, 3).join(', ') + ')';
@@ -365,7 +366,7 @@ var LeaderLine = (() => {
         alpha = parseAlpha(args[4]);
         baseColor = 'device-cmyk(' + args.slice(0, 4).join(', ') + ')'; // omit <F>
       }
-    } else if ((matches = /^\#(?:([\da-f]{6})([\da-f]{2})|([\da-f]{3})([\da-f]))$/i.exec(color))) {
+    } else if ((matches = RE_COLOR_HEX_ALPHA.exec(color))) {
       if (matches[1]) {
         alpha = parseInt(matches[2], 16) / 255;
         baseColor = '#' + matches[1];
@@ -770,7 +771,7 @@ var LeaderLine = (() => {
     const pathSegsLen = [];
     let pathLenAll = 0;
     pathList.forEach((points) => {
-      const pathLen = (points.length === 2 ? getPointsLength : getCubicLength).apply(null, points);
+      const pathLen = (points.length === 2 ? getPointsLength : getCubicLength)(...points);
       pathSegsLen.push(pathLen);
       pathLenAll += pathLen;
     });
@@ -826,8 +827,8 @@ var LeaderLine = (() => {
   window.pathDataHasChanged = pathDataHasChanged; // [DEBUG/]
 
   function bBox2PathData(bBox) {
-    const right = bBox.right != null ? bBox.right : bBox.left + bBox.width,
-      bottom = bBox.bottom != null ? bBox.bottom : bBox.top + bBox.height;
+    const right = bBox.right ?? bBox.left + bBox.width,
+      bottom = bBox.bottom ?? bBox.top + bBox.height;
     return [
       { type: 'M', values: [bBox.left, bBox.top] },
       { type: 'L', values: [right, bBox.top] },
@@ -840,7 +841,7 @@ var LeaderLine = (() => {
   function addEventHandler(props, type, handler) {
     if (!props.events[type]) {
       props.events[type] = [handler];
-    } else if (props.events[type].indexOf(handler) < 0) {
+    } else if (!props.events[type].includes(handler)) {
       props.events[type].push(handler);
     }
   }
@@ -880,7 +881,7 @@ var LeaderLine = (() => {
   window.forceReflow = forceReflow; // [DEBUG/]
 
   function forceReflowAdd(props, target) {
-    if (props.reflowTargets.indexOf(target) < 0) {
+    if (!props.reflowTargets.includes(target)) {
       props.reflowTargets.push(target);
     }
   }
@@ -914,10 +915,9 @@ var LeaderLine = (() => {
    * @param {BBox} bBox - `BBox` as `viewBox` of the marker.
    * @param {SVGSVGElement} svg - Parent `<svg>` element.
    * @param {SVGElement} shape - An element that is shown as marker.
-   * @param {SVGElement} marked - Target element that has `marker-start/end` such as `<path>`.
    * @returns {void}
    */
-  function setMarkerOrient(props, marker, orient, bBox, svg, shape, marked) {
+  function setMarkerOrient(props, marker, orient, bBox, svg, shape) {
     let transform, reverseView;
     // `setOrientToAuto()`, `setOrientToAngle()`, `orientType` and `orientAngle` of
     // `SVGMarkerElement` don't work in browsers other than Chrome.
@@ -1750,8 +1750,7 @@ var LeaderLine = (() => {
               marker.orient,
               symbolConf.bBox,
               props.svg,
-              props.plugMarkerShapeSE[i],
-              props.plugsFace
+              props.plugMarkerShapeSE[i]
             );
             updated = true;
             if (IS_GECKO) {
@@ -2439,7 +2438,7 @@ var LeaderLine = (() => {
             }
 
             dpList[1].reverse();
-            dpList[0].concat(dpList[1]).forEach((dirPoint, i) => {
+            [...dpList[0], ...dpList[1]].forEach((dirPoint, i) => {
               const point = { x: dirPoint.x, y: dirPoint.y };
               if (i > 0) {
                 pathList.push([curPoint, point]);
@@ -2895,8 +2894,7 @@ var LeaderLine = (() => {
                   marker.orient,
                   symbolConf.bBox,
                   props.svg,
-                  props.capsMaskMarkerShapeSE[i],
-                  props.capsMaskLine
+                  props.capsMaskMarkerShapeSE[i]
                 );
                 updated = true;
                 if (IS_GECKO) {
@@ -3149,7 +3147,7 @@ var LeaderLine = (() => {
   function bindAttachment(props, attachProps, optionName) {
     const bindTarget = { props, optionName };
     if (
-      props.attachments.indexOf(attachProps) < 0 &&
+      !props.attachments.includes(attachProps) &&
       (!attachProps.conf.bind || attachProps.conf.bind(attachProps, bindTarget))
     ) {
       props.attachments.push(attachProps);
@@ -3543,9 +3541,10 @@ var LeaderLine = (() => {
           if (i != null && !effectOptions[optionName]) {
             effectOptions[optionName] = [];
           }
-          (typeof optionClass === 'function' ? optionClass : optionClass === 'id' ? setValidId : setValidType).apply(
-            null,
-            [effectOptions, newEffectOptions].concat(optionConf.slice(1))
+          (typeof optionClass === 'function' ? optionClass : optionClass === 'id' ? setValidId : setValidType)(
+            effectOptions,
+            newEffectOptions,
+            ...optionConf.slice(1)
           );
         });
         return effectOptions;
@@ -3555,7 +3554,7 @@ var LeaderLine = (() => {
         let optionValue;
         const keyAnimOptions = effectName + '_animOptions';
 
-        if (!newEffectOptions.hasOwnProperty('animation')) {
+        if (!Object.hasOwn(newEffectOptions, 'animation')) {
           optionValue = !!effectConf.defaultEnabled;
           props.curStats[keyAnimOptions] = optionValue ? getValidAnimOptions({}, effectConf.defaultAnimOptions) : null;
         } else if (isObject(newEffectOptions.animation)) {
@@ -3571,7 +3570,7 @@ var LeaderLine = (() => {
         return optionValue;
       }
 
-      if (newOptions.hasOwnProperty(effectName)) {
+      if (Object.hasOwn(newOptions, effectName)) {
         newOption = newOptions[effectName];
 
         if (isObject(newOption)) {
@@ -3798,8 +3797,8 @@ var LeaderLine = (() => {
 
         point = pathList[0][0];
         curStats.gradient_pointSE[0] = { x: point.x, y: point.y }; // first point of first seg
-        pathSeg = pathList[pathList.length - 1];
-        point = pathSeg[pathSeg.length - 1];
+        pathSeg = pathList.at(-1);
+        point = pathSeg.at(-1);
         curStats.gradient_pointSE[1] = { x: point.x, y: point.y }; // last point of last seg
 
         [0, 1].forEach((i) => {
@@ -4037,7 +4036,7 @@ var LeaderLine = (() => {
         const dbgLog = 'on=' + (on != null ? 'on' : 'aplStats.show_on');
         // [/DEBUG]
         const curStats = props.curStats;
-        on = on != null ? on : props.aplStats.show_on;
+        on = on ?? props.aplStats.show_on;
         traceLog.add(dbgLog + '=' + on); // [DEBUG/]
         curStats.show_inAnim = false;
         if (finish) {
@@ -4091,7 +4090,7 @@ var LeaderLine = (() => {
         );
         // [/DEBUG]
         curStats.show_inAnim = true;
-        anim.start(curStats.show_animId, !props.aplStats.show_on, timeRatio != null ? timeRatio : prevTimeRatio);
+        anim.start(curStats.show_animId, !props.aplStats.show_on, timeRatio ?? prevTimeRatio);
         traceLog.add('</SHOW_EFFECTS.fade.start>'); // [DEBUG/]
       },
 
@@ -4105,7 +4104,7 @@ var LeaderLine = (() => {
         const curStats = props.curStats;
 
         let timeRatio;
-        on = on != null ? on : props.aplStats.show_on;
+        on = on ?? props.aplStats.show_on;
         traceLog.add(dbgLog + '=' + on); // [DEBUG/]
         timeRatio = curStats.show_inAnim ? anim.stop(curStats.show_animId) : on ? 1 : 0;
         curStats.show_inAnim = false;
@@ -4205,7 +4204,7 @@ var LeaderLine = (() => {
         // [/DEBUG]
         curStats.show_inAnim = true;
         addEventHandler(props, 'apl_position', SHOW_EFFECTS.draw.update);
-        anim.start(curStats.show_animId, !props.aplStats.show_on, timeRatio != null ? timeRatio : prevTimeRatio);
+        anim.start(curStats.show_animId, !props.aplStats.show_on, timeRatio ?? prevTimeRatio);
         traceLog.add('</SHOW_EFFECTS.draw.start>'); // [DEBUG/]
       },
 
@@ -4219,7 +4218,7 @@ var LeaderLine = (() => {
         const curStats = props.curStats;
 
         let timeRatio;
-        on = on != null ? on : props.aplStats.show_on;
+        on = on ?? props.aplStats.show_on;
         traceLog.add(dbgLog + '=' + on); // [DEBUG/]
         timeRatio = curStats.show_inAnim ? anim.stop(curStats.show_animId) : on ? 1 : 0;
         curStats.show_inAnim = false;
@@ -4947,7 +4946,7 @@ var LeaderLine = (() => {
           attachProps,
           curStats,
           'strokeWidth',
-          attachProps.size != null ? attachProps.size : llStats ? llStats.line_strokeWidth : DEFAULT_OPTIONS.lineSize
+          attachProps.size ?? (llStats ? llStats.line_strokeWidth : DEFAULT_OPTIONS.lineSize)
         );
 
         elementBBox = getBBox(attachProps.element);
@@ -4973,9 +4972,8 @@ var LeaderLine = (() => {
                 areaBBox.bottom = areaBBox.top + areaBBox.height;
 
                 strokePadding = curStats.strokeWidth / 2;
-                maxRadius = (side = Math.min(areaBBox.width, areaBBox.height))
-                  ? (side / 2) * Math.SQRT2 + strokePadding
-                  : 0;
+                side = Math.min(areaBBox.width, areaBBox.height);
+                maxRadius = side ? (side / 2) * Math.SQRT2 + strokePadding : 0;
                 radius = !attachProps.radius ? 0 : attachProps.radius <= maxRadius ? attachProps.radius : maxRadius;
                 if (radius) {
                   offsetC = (radius - strokePadding) / Math.SQRT2;
@@ -5836,7 +5834,7 @@ var LeaderLine = (() => {
             ? getPointOnLine(points[0], points[1], 0)
             : getPointOnCubic(points[0], points[1], points[2], points[3], 0);
         } else if (pointLen >= pathLenAll) {
-          points = pathList[pathList.length - 1];
+          points = pathList.at(-1);
           return points.length === 2
             ? getPointOnLine(points[0], points[1], 1)
             : getPointOnCubic(points[0], points[1], points[2], points[3], 1);
@@ -6251,7 +6249,7 @@ var LeaderLine = (() => {
                 pathData.push({ type: 'L', values: [point.x, point.y] });
               });
             }
-            curPoint = points[points.length - 1];
+            curPoint = points.at(-1);
           }
           return pathData;
         }, []);

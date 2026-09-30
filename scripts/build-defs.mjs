@@ -30,6 +30,10 @@ function readSymbols({ APP_ID, DEFAULT_LINE_SIZE }) {
   const plug2Symbol = {};
   const vars = {};
   const serializer = new XMLSerializer();
+  // oxlint-disable-next-line e18e/prefer-static-regex -- serialized into the page: no module scope there
+  const RE_PROP = /prop-([^\s]+)/;
+  // oxlint-disable-next-line e18e/prefer-static-regex -- serialized into the page: no module scope there
+  const RE_VAR_ID = /varId-([^\s]+)/;
   let markup = '';
 
   for (const svg of document.querySelectorAll('svg')) {
@@ -49,8 +53,8 @@ function readSymbols({ APP_ID, DEFAULT_LINE_SIZE }) {
     let noOverhead = false;
     for (const prop of props) {
       let matches;
-      if ((matches = /prop-([^\s]+)/.exec(prop))) conf[matches[1]] = true;
-      else if ((matches = /varId-([^\s]+)/.exec(prop))) vars[matches[1]] = id;
+      if ((matches = RE_PROP.exec(prop))) conf[matches[1]] = true;
+      else if ((matches = RE_VAR_ID.exec(prop))) vars[matches[1]] = id;
       else if (prop === 'no-overhead') noOverhead = true;
     }
 

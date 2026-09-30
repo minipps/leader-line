@@ -6,6 +6,7 @@
   - With specified window
 */
 
+// oxlint-disable-next-line no-unused-vars -- the global of a classic script, read by the build and the test pages
 function pathDataPolyfill(window, IS_GECKO) {
   'use strict';
 
@@ -53,8 +54,6 @@ function pathDataPolyfill(window, IS_GECKO) {
         this._prevCommand = null;
         this._skipOptionalSpaces();
       };
-
-      const isIE = window.navigator.userAgent.indexOf('MSIE ') !== -1;
 
       Source.prototype = {
         parseSegment() {
@@ -125,7 +124,7 @@ function pathDataPolyfill(window, IS_GECKO) {
             values = [];
           }
 
-          if (values === null || values.indexOf(null) >= 0) {
+          if (values === null || values.includes(null)) {
             // Unknown command or known command with invalid values
             return null;
           } else {
@@ -485,9 +484,9 @@ function pathDataPolyfill(window, IS_GECKO) {
         m2[1] = 2 * m1[1] - m2[1];
 
         if (_recursive) {
-          return [m2, m3, m4].concat(params);
+          return [m2, m3, m4, ...params];
         } else {
-          params = [m2, m3, m4].concat(params).join().split(',');
+          params = [m2, m3, m4, ...params].join().split(',');
 
           const curves = [];
           let curveParams = [];
@@ -874,7 +873,7 @@ function pathDataPolyfill(window, IS_GECKO) {
         setAttribute.call(this, name, value);
       };
 
-      window.SVGPathElement.prototype.removeAttribute = function (name, value) {
+      window.SVGPathElement.prototype.removeAttribute = function (name) {
         if (name === 'd') {
           this[$cachedPathData] = null;
           this[$cachedNormalizedPathData] = null;
@@ -914,12 +913,7 @@ function pathDataPolyfill(window, IS_GECKO) {
 
       window.SVGPathElement.prototype.setPathData = function (pathData) {
         if (pathData.length === 0) {
-          if (isIE) {
-            // @bugfix https://github.com/mbostock/d3/issues/1737
-            this.setAttribute('d', '');
-          } else {
-            this.removeAttribute('d');
-          }
+          this.removeAttribute('d');
         } else {
           let d = '';
 

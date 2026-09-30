@@ -22,6 +22,7 @@ const write = async (path, content) => {
 
 const RE_EXPORT = /^[^]*?@EXPORT@\s*(?:\*\/\s*)?([^]*?)\s*(?:\/\*\s*|\/\/\s*)?@\/EXPORT@[^]*$/;
 const RE_INCLUDE = /@INCLUDE\[code:([^\n]+?)\]@/g;
+const RE_FINAL_SEMICOLON = /;$/;
 
 /** Serializes the values of `src/defs.js` back to code; the `PLUG_BEHIND` sentinel is kept as an identifier. */
 function toCode(value, sentinel) {
@@ -46,7 +47,7 @@ async function getCode() {
     code[name] = toCode(context[name], sentinel);
   }
   // An expression, included as an initializer: without the statement's semicolon, if any.
-  const pickExport = async (path) => (await read(path)).replace(RE_EXPORT, '$1').replace(/;$/, '');
+  const pickExport = async (path) => (await read(path)).replace(RE_EXPORT, '$1').replace(RE_FINAL_SEMICOLON, '');
   code.anim = await pickExport('src/anim.js');
   code.pathDataPolyfill = await pickExport('src/path-data-polyfill/path-data-polyfill.js');
   return code;

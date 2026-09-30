@@ -19,9 +19,7 @@
   ],
   "overrides": [
     {
-      "files": [
-        "src/**/*.js"
-      ],
+      "files": ["src/**/*.js"],
       "options": {
         "trailingComma": "none"
       }
