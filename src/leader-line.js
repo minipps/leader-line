@@ -184,6 +184,33 @@ var LeaderLine = (() => {
     };
   };
 
+  /**
+   * Observability: each instance is an event target of its own (kept here, so that the
+   * listeners do not keep a removed instance alive), and `LeaderLine` receives the events of
+   * every instance.
+   * @type {WeakMap<LeaderLine, EventTarget>}
+   */
+  const eventTargets = new WeakMap();
+  const globalEventTarget = new EventTarget();
+
+  /**
+   * Dispatch a `CustomEvent` whose `detail` is `{line, ...detail}` to the instance and to
+   * `LeaderLine`. An exception thrown by a listener is reported, it does not stop the update.
+   * @param {props} props - `props` of `LeaderLine` instance.
+   * @param {string} type - Event type.
+   * @param {Object} [detail] - Additional properties of `detail`.
+   * @returns {void}
+   */
+  function emit(props, type, detail) {
+    const line = props.instance;
+    const target = eventTargets.get(line);
+    const init = { detail: { line, ...detail } };
+    if (target) {
+      target.dispatchEvent(new CustomEvent(type, init));
+    }
+    globalEventTarget.dispatchEvent(new CustomEvent(type, init));
+  }
+
   /** @typedef {{hasSE, hasProps, iniValue}} StatConf */
   /** @type {{statId: string, StatConf}} */
   const STATS = {
@@ -3062,6 +3089,14 @@ var LeaderLine = (() => {
     }
     forceReflowApply(props);
 
+    const changed = Object.keys(updated).filter((key) => updated[key]);
+    if (changed.length) {
+      emit(props, 'update', { changed });
+      if (updated.path) {
+        emit(props, 'position');
+      }
+    }
+
     // [DEBUG]
     traceLog.add('<update>');
     Object.keys(updated).forEach((key) => {
@@ -3071,6 +3106,17 @@ var LeaderLine = (() => {
     });
     traceLog.add('</update>');
     // [/DEBUG]
+  }
+
+  /**
+   * Finish the show effect: it ran to its end, or it has no animation.
+   * @param {props} props - `props` of `LeaderLine` instance.
+   * @param {string} effectName - Key of `SHOW_EFFECTS`.
+   * @returns {void}
+   */
+  function finishShow(props, effectName) {
+    SHOW_EFFECTS[effectName].stop(props, true);
+    emit(props, props.aplStats.show_on ? 'shown' : 'hidden', { effect: effectName });
   }
 
   function getValidAnimOptions(animOptions, defaultAnimOptions) {
@@ -3105,6 +3151,14 @@ var LeaderLine = (() => {
     update.show_on = curStats.show_on !== aplStats.show_on;
     update.show_effect = curStats.show_effect !== aplStats.show_effect;
     update.show_animOptions = hasChanged(curStats.show_animOptions, aplStats.show_animOptions);
+
+    // Before the effect starts: `shown`/`hidden` follows, at once when there is no animation.
+    if (update.show_on) {
+      emit(props, on ? 'show' : 'hide', {
+        effect: curStats.show_effect,
+        animOptions: copyTree(curStats.show_animOptions)
+      });
+    }
 
     if (update.show_effect || update.show_animOptions) {
       if (curStats.show_inAnim) {
@@ -3609,6 +3663,7 @@ var LeaderLine = (() => {
     // [/DEBUG]
 
     update(props, needs);
+    emit(props, 'options', { options: Object.keys(newOptions) });
   }
 
   /**
@@ -4026,7 +4081,7 @@ var LeaderLine = (() => {
         // [DEBUG]
         traceLog.add('timeRatio=' + (timeRatio != null ? 'timeRatio' : 'NONE'));
         // [/DEBUG]
-        SHOW_EFFECTS.none.stop(props, true);
+        finishShow(props, 'none');
         traceLog.add('</SHOW_EFFECTS.none.start>'); // [DEBUG/]
       },
 
@@ -4062,7 +4117,7 @@ var LeaderLine = (() => {
           (outputRatio) => outputRatio,
           (value, finish) => {
             if (finish) {
-              SHOW_EFFECTS.fade.stop(props, true);
+              finishShow(props, 'fade');
             } else {
               props.svg.style.opacity = value + '';
             }
@@ -4174,7 +4229,7 @@ var LeaderLine = (() => {
           },
           (value, finish) => {
             if (finish) {
-              SHOW_EFFECTS.draw.stop(props, true);
+              finishShow(props, 'draw');
             } else {
               props.pathList.animVal = value;
               update(props, { path: true });
@@ -4295,7 +4350,9 @@ var LeaderLine = (() => {
 
     Object.defineProperty(this, '_id', { value: ++insId });
     props._id = this._id;
+    props.instance = this;
     insProps[this._id] = props;
+    eventTargets.set(this, new EventTarget());
 
     if (arguments.length === 1) {
       options = start;
@@ -4480,6 +4537,7 @@ var LeaderLine = (() => {
     const props = insProps[this._id],
       curStats = props.curStats;
 
+    emit(props, 'remove');
     Object.keys(EFFECTS).forEach((effectName) => {
       const keyAnimId = effectName + '_animId';
       if (curStats[keyAnimId]) {
@@ -4497,6 +4555,28 @@ var LeaderLine = (() => {
       props.baseWindow.document.body.removeChild(props.svg);
     }
     delete insProps[this._id];
+  };
+
+  /**
+   * Listen to the events of this line: `update`, `position`, `options`, `show`, `hide`,
+   * `shown`, `hidden` and `remove`. Same arguments as `EventTarget.addEventListener()`.
+   * @returns {void}
+   */
+  LeaderLine.prototype.addEventListener = function (type, listener, options) {
+    eventTargets.get(this).addEventListener(type, listener, options);
+  };
+
+  LeaderLine.prototype.removeEventListener = function (type, listener, options) {
+    eventTargets.get(this).removeEventListener(type, listener, options);
+  };
+
+  /** Listen to the events of every line, as `LeaderLine.prototype.addEventListener()`. */
+  LeaderLine.addEventListener = (type, listener, options) => {
+    globalEventTarget.addEventListener(type, listener, options);
+  };
+
+  LeaderLine.removeEventListener = (type, listener, options) => {
+    globalEventTarget.removeEventListener(type, listener, options);
   };
 
   LeaderLine.prototype.show = function (showEffectName, animOptions) {

@@ -155,6 +155,40 @@ declare namespace LeaderLine {
     lineOffset?: number;
   }
 
+  /** What an update redrew, in `update` events. */
+  type UpdatedPart =
+    | 'line'
+    | 'plug'
+    | 'lineOutline'
+    | 'plugOutline'
+    | 'faces'
+    | 'position'
+    | 'path'
+    | 'viewBox'
+    | 'mask';
+
+  /** `detail` of every event: the line it is about, and the properties of its type. */
+  type EventDetail<T = {}> = { line: LeaderLine } & T;
+
+  interface EventMap {
+    /** Something was redrawn. */
+    update: CustomEvent<EventDetail<{ changed: UpdatedPart[] }>>;
+    /** The path of the line changed: an element moved, `position()`, an option, an animation. */
+    position: CustomEvent<EventDetail>;
+    /** Options were set, by `setOptions()` or a property. */
+    options: CustomEvent<EventDetail<{ options: string[] }>>;
+    /** `show()` or `hide()` changed the state; the effect starts. */
+    show: CustomEvent<EventDetail<{ effect: ShowEffectName; animOptions: AnimOptions }>>;
+    hide: CustomEvent<EventDetail<{ effect: ShowEffectName; animOptions: AnimOptions }>>;
+    /** The show or hide effect ran to its end. */
+    shown: CustomEvent<EventDetail<{ effect: ShowEffectName }>>;
+    hidden: CustomEvent<EventDetail<{ effect: ShowEffectName }>>;
+    /** `remove()`: dispatched before the line is removed from the page. */
+    remove: CustomEvent<EventDetail>;
+  }
+
+  type EventListener<K extends keyof EventMap> = (event: EventMap[K]) => void;
+
   interface PathLabelOptions extends LabelStyleOptions {
     text?: string;
     lineOffset?: number;
@@ -167,6 +201,18 @@ declare class LeaderLine {
 
   /** Reposition the lines when the window is resized. Default `true`. */
   static positionByWindowResize: boolean;
+
+  /** Listen to the events of every line. */
+  static addEventListener<K extends keyof LeaderLine.EventMap>(
+    type: K,
+    listener: LeaderLine.EventListener<K>,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  static removeEventListener<K extends keyof LeaderLine.EventMap>(
+    type: K,
+    listener: LeaderLine.EventListener<K>,
+    options?: boolean | EventListenerOptions,
+  ): void;
 
   static pointAnchor(options: LeaderLine.PointAnchorOptions & { element: Element }): LeaderLine.Attachment;
   static pointAnchor(element: Element, options?: LeaderLine.PointAnchorOptions): LeaderLine.Attachment;
@@ -234,6 +280,18 @@ declare class LeaderLine {
   position(): this;
   /** Remove the line from the page. It cannot be used afterwards. */
   remove(): void;
+
+  /** Listen to the events of this line. */
+  addEventListener<K extends keyof LeaderLine.EventMap>(
+    type: K,
+    listener: LeaderLine.EventListener<K>,
+    options?: boolean | AddEventListenerOptions,
+  ): void;
+  removeEventListener<K extends keyof LeaderLine.EventMap>(
+    type: K,
+    listener: LeaderLine.EventListener<K>,
+    options?: boolean | EventListenerOptions,
+  ): void;
 }
 
 export default LeaderLine;

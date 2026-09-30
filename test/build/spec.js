@@ -121,6 +121,25 @@ describe('built files', function () {
     area.remove();
   });
 
+  it('dispatches events to the line and to LeaderLine', async function () {
+    var win = await loadFrame('<script src="/package/leader-line.min.js"></script>'),
+      own = [],
+      all = [],
+      line;
+    win.LeaderLine.addEventListener('position', function (event) {
+      all.push(event.detail.line);
+    });
+    line = new win.LeaderLine(win.document.getElementById('a'), win.document.getElementById('b'));
+    line.addEventListener('update', function (event) {
+      own.push(event.detail.changed.includes('path'));
+    });
+    win.document.getElementById('b').style.left = '1000px';
+    line.position();
+    expect(own).toEqual([true]);
+    expect(all).toEqual([line, line]); // constructor, position()
+    line.remove();
+  });
+
   it('does not expose the debug hooks of the source', async function () {
     var win = await loadFrame('<script src="/package/leader-line.min.js"></script>');
     [
