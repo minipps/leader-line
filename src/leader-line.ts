@@ -41,6 +41,75 @@ var LeaderLine = (() => {
     dirId?: number;
   }
 
+  /** Called by `setStat()` when the stat it is registered for (`addEventHandler()`) changes. */
+  type EventHandler = (props: Props, value?: any, key?: string | number) => void;
+
+  /** The state of a `LeaderLine` instance, in `insProps`. */
+  interface Props {
+    /** Set by `LeaderLine()` after it creates `props`, like `instance`. */
+    _id?: number;
+    instance?: object;
+    options: Dict;
+    /** Whether each anchor or label is an attachment: `isAttachment()`. */
+    optionIsAttach: { anchorSE: (boolean | null)[]; labelSEM: (boolean | null)[] };
+    curStats: Dict;
+    aplStats: Dict;
+    events: Record<string, EventHandler[]>;
+    /** `attachProps` of the bound attachments. */
+    attachments: Dict[];
+    reflowTargets: SVGElement[];
+    isShown?: boolean | number;
+    positionWatcher?: { elements: Element[]; stop(): void } | null;
+
+    // `bindWindow()`
+    baseWindow?: Window & typeof globalThis;
+    bodyOffset?: { x: number; y: number };
+    pathList?: { baseVal?: Point[][]; animVal?: Point[][] | null };
+    svg?: SVGSVGElement;
+    defs?: SVGDefsElement;
+    linePath?: SVGPathElement;
+    lineShape?: SVGUseElement;
+    capsMaskAnchorSE?: SVGPathElement[];
+    lineMaskMarkerIdSE?: string[];
+    capsMaskMarkerSE?: SVGMarkerElement[];
+    capsMaskMarkerShapeSE?: SVGUseElement[];
+    capsMaskLine?: SVGUseElement;
+    maskBGRect?: SVGRectElement;
+    lineMaskId?: string;
+    lineMask?: SVGMaskElement;
+    lineMaskBG?: SVGUseElement;
+    lineMaskShape?: SVGUseElement;
+    lineMaskCaps?: SVGUseElement;
+    lineOutlineMask?: SVGMaskElement;
+    lineOutlineMaskShape?: SVGUseElement;
+    lineOutlineMaskCaps?: SVGUseElement;
+    face?: SVGGElement;
+    lineFace?: SVGUseElement;
+    lineOutlineFace?: SVGUseElement;
+    plugMaskIdSE?: string[];
+    plugMaskSE?: SVGMaskElement[];
+    plugMaskShapeSE?: SVGUseElement[];
+    plugOutlineMaskSE?: SVGMaskElement[];
+    plugOutlineMaskShapeSE?: SVGUseElement[];
+    plugMarkerIdSE?: string[];
+    plugMarkerSE?: SVGMarkerElement[];
+    plugMarkerShapeSE?: SVGGElement[];
+    plugFaceSE?: SVGUseElement[];
+    plugOutlineFaceSE?: SVGUseElement[];
+    plugsFace?: SVGUseElement;
+
+    // `EFFECTS`
+    efc_gradient_gradient?: SVGLinearGradientElement | null;
+    efc_gradient_stopSE?: SVGStopElement[] | null;
+    efc_dropShadow_elmFilter?: SVGFilterElement | null;
+    /** `feDropShadow`, or `feOffset` where it is not supported. */
+    efc_dropShadow_elmOffset?: SVGFEDropShadowElement | SVGFEOffsetElement | null;
+    /** `feDropShadow`, or `feGaussianBlur` where it is not supported. */
+    efc_dropShadow_elmBlur?: SVGFEDropShadowElement | SVGFEGaussianBlurElement | null;
+    efc_dropShadow_styleFlood?: CSSStyleDeclaration | null;
+    efc_dropShadow_elmsAppend?: SVGElement[] | null;
+  }
+
   interface AnimOptions {
     duration: number;
     /** FUNC_KEYS or [x1, y1, x2, y2] */
@@ -195,7 +264,7 @@ var LeaderLine = (() => {
    * @param {Object} [detail] - Additional properties of `detail`.
    * @returns {void}
    */
-  function emit(props, type, detail?) {
+  function emit(props: Props, type, detail?) {
     const line = props.instance;
     const target = eventTargets.get(line);
     const init = { detail: { line, ...detail } };
@@ -278,8 +347,7 @@ var LeaderLine = (() => {
   let delayedProcs = [];
   let timerDelayedProc;
 
-  /** @type {Object.<_id: number, props>} */
-  const insProps = {};
+  const insProps: Record<number, Props> = {};
 
   let insId = 0;
 
@@ -862,7 +930,7 @@ var LeaderLine = (() => {
     ];
   }
 
-  function addEventHandler(props, type, handler) {
+  function addEventHandler(props: Props, type, handler) {
     if (!props.events[type]) {
       props.events[type] = [handler];
     } else if (!props.events[type].includes(handler)) {
@@ -870,7 +938,7 @@ var LeaderLine = (() => {
     }
   }
 
-  function removeEventHandler(props, type, handler) {
+  function removeEventHandler(props: Props, type, handler) {
     let i;
     if (props.events[type] && (i = props.events[type].indexOf(handler)) > -1) {
       props.events[type].splice(i, 1);
@@ -904,13 +972,13 @@ var LeaderLine = (() => {
   }
   window.forceReflow = forceReflow; // [DEBUG/]
 
-  function forceReflowAdd(props, target) {
+  function forceReflowAdd(props: Props, target) {
     if (!props.reflowTargets.includes(target)) {
       props.reflowTargets.push(target);
     }
   }
 
-  function forceReflowApply(props) {
+  function forceReflowApply(props: Props) {
     props.reflowTargets.forEach((target) => {
       forceReflow(target);
     });
@@ -941,7 +1009,7 @@ var LeaderLine = (() => {
    * @param {SVGElement} shape - An element that is shown as marker.
    * @returns {void}
    */
-  function setMarkerOrient(props, marker, orient, bBox, svg, shape) {
+  function setMarkerOrient(props: Props, marker, orient, bBox, svg, shape) {
     let transform, reverseView;
     // `setOrientToAuto()`, `setOrientToAngle()`, `orientType` and `orientAngle` of
     // `SVGMarkerElement` don't work in browsers other than Chrome.
@@ -1046,7 +1114,7 @@ var LeaderLine = (() => {
     });
   }
 
-  function setStat(props, container, key, value, eventHandlers? /* [DEBUG] */, log? /* [/DEBUG] */) {
+  function setStat(props: Props, container, key, value, eventHandlers? /* [DEBUG] */, log? /* [/DEBUG] */) {
     if (value !== container[key]) {
       traceLog.add(log || key + '=%s', value); // [DEBUG/]
       container[key] = value;
@@ -1118,7 +1186,7 @@ var LeaderLine = (() => {
    * @param {Window} newWindow - A common ancestor `window`.
    * @returns {void}
    */
-  function bindWindow(props, newWindow) {
+  function bindWindow(props: Props, newWindow) {
     traceLog.add('<bindWindow>'); // [DEBUG/]
     const aplStats = props.aplStats;
     const baseDocument = newWindow.document;
@@ -1344,7 +1412,7 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {boolean} `true` if it was changed.
    */
-  function updateLine(props) {
+  function updateLine(props: Props) {
     traceLog.add('<updateLine>'); // [DEBUG/]
     const options = props.options;
     const curStats = props.curStats;
@@ -1370,7 +1438,7 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {boolean} `true` if it was changed.
    */
-  function updatePlug(props) {
+  function updatePlug(props: Props) {
     traceLog.add('<updatePlug>'); // [DEBUG/]
     const options = props.options;
     const curStats = props.curStats;
@@ -1509,7 +1577,7 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {boolean} `true` if it was changed.
    */
-  function updateLineOutline(props) {
+  function updateLineOutline(props: Props) {
     traceLog.add('<updateLineOutline>'); // [DEBUG/]
     const options = props.options;
     const curStats = props.curStats;
@@ -1558,7 +1626,7 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {boolean} `true` if it was changed.
    */
-  function updatePlugOutline(props) {
+  function updatePlugOutline(props: Props) {
     traceLog.add('<updatePlugOutline>'); // [DEBUG/]
     const options = props.options;
     const curStats = props.curStats;
@@ -1648,7 +1716,7 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {boolean} `true` if it was changed.
    */
-  function updateFaces(props) {
+  function updateFaces(props: Props) {
     traceLog.add('<updateFaces>'); // [DEBUG/]
     const curStats = props.curStats;
     const aplStats = props.aplStats;
@@ -1924,7 +1992,7 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {boolean} `true` if it was changed.
    */
-  function updatePosition(props) {
+  function updatePosition(props: Props) {
     traceLog.add('<updatePosition>'); // [DEBUG/]
     const options = props.options;
     const curStats = props.curStats;
@@ -2610,7 +2678,7 @@ var LeaderLine = (() => {
    * @param {(Array|undefined)} fromPathList - The path list that was shown.
    * @returns {void}
    */
-  function smoothPath(props, fromPathList) {
+  function smoothPath(props: Props, fromPathList) {
     const curStats = props.curStats,
       animOptions = props.options.smoothPosition,
       toPathList = props.pathList.baseVal;
@@ -2654,7 +2722,7 @@ var LeaderLine = (() => {
     );
   }
 
-  function updatePath(props) {
+  function updatePath(props: Props) {
     traceLog.add('<updatePath>'); // [DEBUG/]
     const curStats = props.curStats;
     const aplStats = props.aplStats;
@@ -2716,7 +2784,7 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {boolean} `true` if it was changed.
    */
-  function updateViewBox(props) {
+  function updateViewBox(props: Props) {
     traceLog.add('<updateViewBox>'); // [DEBUG/]
     const curStats = props.curStats;
     const aplStats = props.aplStats;
@@ -2774,7 +2842,7 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {boolean} `true` if it was changed.
    */
-  function updateMask(props) {
+  function updateMask(props: Props) {
     traceLog.add('<updateMask>'); // [DEBUG/]
     const curStats = props.curStats;
     const aplStats = props.aplStats;
@@ -3037,7 +3105,7 @@ var LeaderLine = (() => {
    * @param {(boolean|number)} on - true:show | false:hide | 1:show(in anim)
    * @returns {void}
    */
-  function svgShow(props, on) {
+  function svgShow(props: Props, on) {
     traceLog.add('<svgShow>'); // [DEBUG/]
     if (on !== props.isShown) {
       traceLog.add('on=' + on); // [DEBUG/]
@@ -3059,7 +3127,7 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {void}
    */
-  function setEffect(props) {
+  function setEffect(props: Props) {
     traceLog.add('<setEffect>'); // [DEBUG/]
     const curStats = props.curStats;
     const aplStats = props.aplStats;
@@ -3111,7 +3179,7 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {Element[]} `[start, end]`.
    */
-  function getAnchorElements(props) {
+  function getAnchorElements(props: Props) {
     return props.options.anchorSE.map((anchor, i) =>
       props.optionIsAttach.anchorSE[i] !== false ? insAttachProps[anchor._id].element : anchor
     );
@@ -3126,7 +3194,7 @@ var LeaderLine = (() => {
    * @param {Element[]} elements - The anchor elements.
    * @returns {{elements: Element[], stop: function}} The watcher.
    */
-  function watchPosition(props, elements) {
+  function watchPosition(props: Props, elements) {
     const chain = new Set<Element>();
     const views = new Set<Window & typeof globalThis>();
     elements.forEach((element) => {
@@ -3211,7 +3279,7 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {void}
    */
-  function syncAutoPosition(props) {
+  function syncAutoPosition(props: Props) {
     const watcher = props.positionWatcher;
     const elements = props.options.autoPosition ? getAnchorElements(props) : null;
     if (watcher && elements && watcher.elements.every((element, i) => element === elements[i])) {
@@ -3232,7 +3300,7 @@ var LeaderLine = (() => {
    * @param {Object} needs - `group` of stats.
    * @returns {void}
    */
-  function update(props, needs) {
+  function update(props: Props, needs) {
     const updated: Dict = {};
     if (needs.line) {
       updated.line = updateLine(props);
@@ -3335,7 +3403,7 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {boolean} `true` when the animations have to be left out.
    */
-  function isReducedMotion(props) {
+  function isReducedMotion(props: Props) {
     const setting = LeaderLine.reducedMotion;
     if (typeof setting === 'boolean') {
       return setting;
@@ -3350,7 +3418,7 @@ var LeaderLine = (() => {
    * @param {string} effectName - Key of `SHOW_EFFECTS`.
    * @returns {void}
    */
-  function finishShow(props, effectName) {
+  function finishShow(props: Props, effectName) {
     SHOW_EFFECTS[effectName].stop(props, true);
     emit(props, props.aplStats.show_on ? 'shown' : 'hidden', { effect: effectName });
   }
@@ -3363,7 +3431,7 @@ var LeaderLine = (() => {
     };
   }
 
-  function show(props, on, showEffectName, animOptions) {
+  function show(props: Props, on, showEffectName, animOptions) {
     const curStats = props.curStats;
     const aplStats = props.aplStats;
     const update: Dict = {};
@@ -3445,7 +3513,7 @@ var LeaderLine = (() => {
    * @param {string} optionName - Name of bound option.
    * @returns {boolean} `true` when binding succeeded.
    */
-  function bindAttachment(props, attachProps, optionName) {
+  function bindAttachment(props: Props, attachProps, optionName) {
     const bindTarget = { props, optionName };
     if (
       !props.attachments.includes(attachProps) &&
@@ -3464,7 +3532,7 @@ var LeaderLine = (() => {
    * @param {boolean} [dontRemove] - Don't call `removeAttachment()`.
    * @returns {void}
    */
-  function unbindAttachment(props, attachProps, dontRemove?) {
+  function unbindAttachment(props: Props, attachProps, dontRemove?) {
     let i = props.attachments.indexOf(attachProps);
     if (i > -1) {
       props.attachments.splice(i, 1);
@@ -3499,7 +3567,7 @@ var LeaderLine = (() => {
    * @param {Object} newOptions - New options.
    * @returns {void}
    */
-  function setOptions(props, newOptions) {
+  function setOptions(props: Props, newOptions) {
     /*
       Names of `options`      Keys of API (properties of `newOptions`)
       ----------------------------------------
@@ -3955,15 +4023,15 @@ var LeaderLine = (() => {
         ['type', 'gap', 'number', null, null, null, (value) => value > 0]
       ],
 
-      init(props) {
+      init(props: Props) {
         traceLog.add('<EFFECTS.dash.init>'); // [DEBUG/]
         addEventHandler(props, 'apl_line_strokeWidth', EFFECTS.dash.update);
-        props.lineFace.style.strokeDashoffset = 0;
+        props.lineFace.style.strokeDashoffset = '0';
         EFFECTS.dash.update(props);
         traceLog.add('</EFFECTS.dash.init>'); // [DEBUG/]
       },
 
-      remove(props) {
+      remove(props: Props) {
         traceLog.add('<EFFECTS.dash.remove>'); // [DEBUG/]
         const curStats = props.curStats;
         removeEventHandler(props, 'apl_line_strokeWidth', EFFECTS.dash.update);
@@ -3972,12 +4040,12 @@ var LeaderLine = (() => {
           curStats.dash_animId = null;
         }
         props.lineFace.style.strokeDasharray = 'none';
-        props.lineFace.style.strokeDashoffset = 0;
+        props.lineFace.style.strokeDashoffset = '0';
         initStats(props.aplStats, EFFECTS.dash.stats);
         traceLog.add('</EFFECTS.dash.remove>'); // [DEBUG/]
       },
 
-      update(props) {
+      update(props: Props) {
         traceLog.add('<EFFECTS.dash.update>'); // [DEBUG/]
         const curStats = props.curStats;
         const aplStats = props.aplStats;
@@ -4039,7 +4107,7 @@ var LeaderLine = (() => {
             removeAnim(curStats.dash_animId);
             curStats.dash_animId = null;
           }
-          props.lineFace.style.strokeDashoffset = 0;
+          props.lineFace.style.strokeDashoffset = '0';
           aplStats.dash_animOptions = null;
         }
 
@@ -4061,7 +4129,7 @@ var LeaderLine = (() => {
         ['type', 'reverse', 'boolean', null, null, false]
       ],
 
-      init(props) {
+      init(props: Props) {
         traceLog.add('<EFFECTS.flow.init>'); // [DEBUG/]
         addEventHandler(props, 'apl_line_strokeWidth', EFFECTS.flow.update);
         props.lineFace.style.strokeLinecap = 'round';
@@ -4069,7 +4137,7 @@ var LeaderLine = (() => {
         traceLog.add('</EFFECTS.flow.init>'); // [DEBUG/]
       },
 
-      remove(props) {
+      remove(props: Props) {
         traceLog.add('<EFFECTS.flow.remove>'); // [DEBUG/]
         const curStats = props.curStats,
           style = props.lineFace.style;
@@ -4077,13 +4145,13 @@ var LeaderLine = (() => {
         removeAnim(curStats.flow_animId);
         curStats.flow_animId = null;
         style.strokeDasharray = 'none';
-        style.strokeDashoffset = 0;
+        style.strokeDashoffset = '0';
         style.strokeLinecap = '';
         initStats(props.aplStats, EFFECTS.flow.stats);
         traceLog.add('</EFFECTS.flow.remove>'); // [DEBUG/]
       },
 
-      update(props) {
+      update(props: Props) {
         traceLog.add('<EFFECTS.flow.update>'); // [DEBUG/]
         const curStats = props.curStats,
           aplStats = props.aplStats,
@@ -4123,7 +4191,7 @@ var LeaderLine = (() => {
         ['type', 'endColor', 'string', 'colorSE', 1, null, null, true]
       ],
 
-      init(props) {
+      init(props: Props) {
         traceLog.add('<EFFECTS.gradient.init>'); // [DEBUG/]
         const baseDocument = props.baseWindow.document;
         const defs = props.defs;
@@ -4152,7 +4220,7 @@ var LeaderLine = (() => {
         traceLog.add('</EFFECTS.gradient.init>'); // [DEBUG/]
       },
 
-      remove(props) {
+      remove(props: Props) {
         traceLog.add('<EFFECTS.gradient.remove>'); // [DEBUG/]
         if (props.efc_gradient_gradient) {
           props.defs.removeChild(props.efc_gradient_gradient);
@@ -4167,7 +4235,7 @@ var LeaderLine = (() => {
         traceLog.add('</EFFECTS.gradient.remove>'); // [DEBUG/]
       },
 
-      update(props) {
+      update(props: Props) {
         traceLog.add('<EFFECTS.gradient.update>'); // [DEBUG/]
         const curStats = props.curStats;
         const aplStats = props.aplStats;
@@ -4240,7 +4308,7 @@ var LeaderLine = (() => {
         ['type', 'opacity', null, null, null, 0.8, (value) => value >= 0 && value <= 1]
       ],
 
-      init(props) {
+      init(props: Props) {
         traceLog.add('<EFFECTS.dropShadow.init>'); // [DEBUG/]
         const baseDocument = props.baseWindow.document,
           defs = props.defs,
@@ -4261,7 +4329,7 @@ var LeaderLine = (() => {
         traceLog.add('</EFFECTS.dropShadow.init>'); // [DEBUG/]
       },
 
-      remove(props) {
+      remove(props: Props) {
         traceLog.add('<EFFECTS.dropShadow.remove>'); // [DEBUG/]
         const defs = props.defs;
         if (props.efc_dropShadow_elmsAppend) {
@@ -4283,7 +4351,7 @@ var LeaderLine = (() => {
         traceLog.add('</EFFECTS.dropShadow.remove>'); // [DEBUG/]
       },
 
-      update(props) {
+      update(props: Props) {
         traceLog.add('<EFFECTS.dropShadow.update>'); // [DEBUG/]
         const curStats = props.curStats;
         const aplStats = props.aplStats;
@@ -4326,7 +4394,7 @@ var LeaderLine = (() => {
         traceLog.add('</EFFECTS.dropShadow.update>'); // [DEBUG/]
       },
 
-      adjustEdge(props, edge) {
+      adjustEdge(props: Props, edge) {
         traceLog.add('<EFFECTS.dropShadow.adjustEdge>'); // [DEBUG/]
         const curStats = props.curStats;
         const aplStats = props.aplStats;
@@ -4394,7 +4462,7 @@ var LeaderLine = (() => {
     none: {
       defaultAnimOptions: {},
 
-      init(props, timeRatio) {
+      init(props: Props, timeRatio) {
         traceLog.add('<SHOW_EFFECTS.none.init>'); // [DEBUG/]
         const curStats = props.curStats;
         if (curStats.show_animId) {
@@ -4405,7 +4473,7 @@ var LeaderLine = (() => {
         traceLog.add('</SHOW_EFFECTS.none.init>'); // [DEBUG/]
       },
 
-      start(props, timeRatio) {
+      start(props: Props, timeRatio) {
         traceLog.add('<SHOW_EFFECTS.none.start>'); // [DEBUG/]
         // [DEBUG]
         traceLog.add('timeRatio=' + (timeRatio != null ? 'timeRatio' : 'NONE'));
@@ -4414,7 +4482,7 @@ var LeaderLine = (() => {
         traceLog.add('</SHOW_EFFECTS.none.start>'); // [DEBUG/]
       },
 
-      stop(props, finish, on) {
+      stop(props: Props, finish, on) {
         traceLog.add('<SHOW_EFFECTS.none.stop>'); // [DEBUG/]
         traceLog.add('finish=' + finish); // [DEBUG/]
         // [DEBUG]
@@ -4435,7 +4503,7 @@ var LeaderLine = (() => {
     fade: {
       defaultAnimOptions: { duration: 300, timing: 'linear' },
 
-      init(props, timeRatio) {
+      init(props: Props, timeRatio) {
         traceLog.add('<SHOW_EFFECTS.fade.init>'); // [DEBUG/]
         const curStats = props.curStats,
           aplStats = props.aplStats;
@@ -4454,7 +4522,7 @@ var LeaderLine = (() => {
         traceLog.add('</SHOW_EFFECTS.fade.init>'); // [DEBUG/]
       },
 
-      start(props, timeRatio) {
+      start(props: Props, timeRatio) {
         traceLog.add('<SHOW_EFFECTS.fade.start>'); // [DEBUG/]
         const curStats = props.curStats,
           animation = curStats.show_animId,
@@ -4476,7 +4544,7 @@ var LeaderLine = (() => {
         traceLog.add('</SHOW_EFFECTS.fade.start>'); // [DEBUG/]
       },
 
-      stop(props, finish, on) {
+      stop(props: Props, finish, on) {
         traceLog.add('<SHOW_EFFECTS.fade.stop>'); // [DEBUG/]
         traceLog.add('finish=' + finish); // [DEBUG/]
         // [DEBUG]
@@ -4509,7 +4577,7 @@ var LeaderLine = (() => {
     draw: {
       defaultAnimOptions: { duration: 500, timing: [0.58, 0, 0.42, 1] },
 
-      init(props, timeRatio) {
+      init(props: Props, timeRatio) {
         traceLog.add('<SHOW_EFFECTS.draw.init>'); // [DEBUG/]
         const curStats = props.curStats,
           aplStats = props.aplStats,
@@ -4576,7 +4644,7 @@ var LeaderLine = (() => {
         traceLog.add('</SHOW_EFFECTS.draw.init>'); // [DEBUG/]
       },
 
-      start(props, timeRatio) {
+      start(props: Props, timeRatio) {
         traceLog.add('<SHOW_EFFECTS.draw.start>'); // [DEBUG/]
         const curStats = props.curStats;
         let prevTimeRatio;
@@ -4595,7 +4663,7 @@ var LeaderLine = (() => {
         traceLog.add('</SHOW_EFFECTS.draw.start>'); // [DEBUG/]
       },
 
-      stop(props, finish, on) {
+      stop(props: Props, finish, on) {
         traceLog.add('<SHOW_EFFECTS.draw.stop>'); // [DEBUG/]
         traceLog.add('finish=' + finish); // [DEBUG/]
         // [DEBUG]
@@ -4625,7 +4693,7 @@ var LeaderLine = (() => {
         return timeRatio;
       },
 
-      update(props) {
+      update(props: Props) {
         removeEventHandler(props, 'apl_position', SHOW_EFFECTS.draw.update);
         if (props.curStats.show_inAnim) {
           SHOW_EFFECTS.draw.init(props, SHOW_EFFECTS.draw.stop(props)); // reset
@@ -4644,7 +4712,7 @@ var LeaderLine = (() => {
    * @param {Object} [options] - Initial options.
    */
   function LeaderLine(start, end, options) {
-    const props: Dict = {
+    const props: Props = {
       // Initialize properties as array.
       options: {
         anchorSE: [],
@@ -5107,7 +5175,7 @@ var LeaderLine = (() => {
         traceLog.add('</ATTACHMENTS.pointAnchor.removeOption>'); // [DEBUG/]
       },
 
-      getBBoxNest(attachProps, props) {
+      getBBoxNest(attachProps, props: Props) {
         const bBox = getBBoxNest(attachProps.element, props.baseWindow),
           width = bBox.width,
           height = bBox.height;
@@ -5330,7 +5398,7 @@ var LeaderLine = (() => {
         traceLog.add('</ATTACHMENTS.areaAnchor.remove>'); // [DEBUG/]
       },
 
-      getStrokeWidth(attachProps, props) {
+      getStrokeWidth(attachProps, props: Props) {
         traceLog.add('<ATTACHMENTS.areaAnchor.getStrokeWidth>'); // [DEBUG/]
         if (ATTACHMENTS.areaAnchor.update(attachProps) && attachProps.boundTargets.length > 1) {
           traceLog.add('update-boundTargets'); // [DEBUG/]
@@ -5347,7 +5415,7 @@ var LeaderLine = (() => {
         return attachProps.curStats.strokeWidth;
       },
 
-      getPathData(attachProps, props) {
+      getPathData(attachProps, props: Props) {
         const bBox = getBBoxNest(attachProps.element, props.baseWindow);
         return pathList2PathData(attachProps.curStats.pathListRel, (point) => {
           point.x += bBox.left;
@@ -5355,7 +5423,7 @@ var LeaderLine = (() => {
         });
       },
 
-      getBBoxNest(attachProps, props) {
+      getBBoxNest(attachProps, props: Props) {
         const bBox = getBBoxNest(attachProps.element, props.baseWindow),
           bBoxRel = attachProps.curStats.bBoxRel;
         return {
@@ -5967,12 +6035,12 @@ var LeaderLine = (() => {
         traceLog.add('</ATTACHMENTS.mouseHoverAnchor.remove>'); // [DEBUG/]
       },
 
-      getBBoxNest(attachProps, props) {
+      getBBoxNest(attachProps, props: Props) {
         return getBBoxNest(attachProps.element, props.baseWindow);
       },
 
       // show/hide immediately
-      llShow(props, on, showEffectName) {
+      llShow(props: Props, on, showEffectName) {
         SHOW_EFFECTS[showEffectName || props.curStats.show_effect].stop(props, true, on);
         props.aplStats.show_on = on; // It is not updated by svgShow(). (It is used in show().)
       },
@@ -6041,13 +6109,13 @@ var LeaderLine = (() => {
         });
 
         // event handler for this instance
-        attachProps.updateColor = (props) => {
+        attachProps.updateColor = (props: Props) => {
           traceLog.add('<ATTACHMENTS.captionLabel.updateColor>'); // [DEBUG/]
           ATTACHMENTS.captionLabel.updateColor(attachProps, props);
           traceLog.add('</ATTACHMENTS.captionLabel.updateColor>'); // [DEBUG/]
         };
 
-        attachProps.updateSocketXY = (props) => {
+        attachProps.updateSocketXY = (props: Props) => {
           traceLog.add('<ATTACHMENTS.captionLabel.updateSocketXY>'); // [DEBUG/]
           const curStats = attachProps.curStats;
           const aplStats = attachProps.aplStats;
@@ -6100,7 +6168,7 @@ var LeaderLine = (() => {
           traceLog.add('</ATTACHMENTS.captionLabel.updateSocketXY>'); // [DEBUG/]
         };
 
-        attachProps.updatePath = (props) => {
+        attachProps.updatePath = (props: Props) => {
           traceLog.add('<ATTACHMENTS.captionLabel.updatePath>'); // [DEBUG/]
           const curStats = attachProps.curStats;
           const aplStats = attachProps.aplStats;
@@ -6127,7 +6195,7 @@ var LeaderLine = (() => {
           traceLog.add('</ATTACHMENTS.captionLabel.updatePath>'); // [DEBUG/]
         };
 
-        attachProps.updateShow = (props) => {
+        attachProps.updateShow = (props: Props) => {
           traceLog.add('<ATTACHMENTS.captionLabel.updateShow>'); // [DEBUG/]
           ATTACHMENTS.captionLabel.updateShow(attachProps, props);
           traceLog.add('</ATTACHMENTS.captionLabel.updateShow>'); // [DEBUG/]
@@ -6135,7 +6203,7 @@ var LeaderLine = (() => {
 
         if (IS_WEBKIT) {
           // [WEBKIT] overflow:visible is ignored
-          attachProps.adjustEdge = (props, edge) => {
+          attachProps.adjustEdge = (props: Props, edge) => {
             traceLog.add('<ATTACHMENTS.captionLabel.adjustEdge>'); // [DEBUG/]
             const curStats = attachProps.curStats;
             if (curStats.x != null) {
@@ -6153,7 +6221,7 @@ var LeaderLine = (() => {
         return true;
       },
 
-      updateColor(attachProps, props) {
+      updateColor(attachProps, props: Props) {
         const curStats = attachProps.curStats;
         const aplStats = attachProps.aplStats;
         const llStats = props.curStats;
@@ -6165,7 +6233,7 @@ var LeaderLine = (() => {
         }
       },
 
-      updateShow(attachProps, props) {
+      updateShow(attachProps, props: Props) {
         const on = props.isShown === true;
         if (on !== attachProps.isShown) {
           traceLog.add('on=' + on); // [DEBUG/]
@@ -6292,7 +6360,7 @@ var LeaderLine = (() => {
         }
       },
 
-      initSvg(attachProps, props) {
+      initSvg(attachProps, props: Props) {
         traceLog.add('<ATTACHMENTS.captionLabel.initSvg>'); // [DEBUG/]
 
         const text = ATTACHMENTS.captionLabel.newText(
@@ -6468,13 +6536,13 @@ var LeaderLine = (() => {
         });
 
         // event handler for this instance
-        attachProps.updateColor = (props) => {
+        attachProps.updateColor = (props: Props) => {
           traceLog.add('<ATTACHMENTS.pathLabel.updateColor>'); // [DEBUG/]
           ATTACHMENTS.captionLabel.updateColor(attachProps, props);
           traceLog.add('</ATTACHMENTS.pathLabel.updateColor>'); // [DEBUG/]
         };
 
-        attachProps.updatePath = (props) => {
+        attachProps.updatePath = (props: Props) => {
           traceLog.add('<ATTACHMENTS.pathLabel.updatePath>'); // [DEBUG/]
           const curStats = attachProps.curStats;
           const aplStats = attachProps.aplStats;
@@ -6508,7 +6576,7 @@ var LeaderLine = (() => {
           traceLog.add('</ATTACHMENTS.pathLabel.updatePath>'); // [DEBUG/]
         };
 
-        attachProps.updateStartOffset = (props) => {
+        attachProps.updateStartOffset = (props: Props) => {
           traceLog.add('<ATTACHMENTS.pathLabel.updateStartOffset>'); // [DEBUG/]
           const curStats = attachProps.curStats;
           const aplStats = attachProps.aplStats;
@@ -6560,7 +6628,7 @@ var LeaderLine = (() => {
           traceLog.add('</ATTACHMENTS.pathLabel.updateStartOffset>'); // [DEBUG/]
         };
 
-        attachProps.updateShow = (props) => {
+        attachProps.updateShow = (props: Props) => {
           traceLog.add('<ATTACHMENTS.pathLabel.updateShow>'); // [DEBUG/]
           ATTACHMENTS.captionLabel.updateShow(attachProps, props);
           traceLog.add('</ATTACHMENTS.pathLabel.updateShow>'); // [DEBUG/]
@@ -6568,7 +6636,7 @@ var LeaderLine = (() => {
 
         if (IS_WEBKIT) {
           // [WEBKIT] overflow:visible is ignored
-          attachProps.adjustEdge = (props, edge) => {
+          attachProps.adjustEdge = (props: Props, edge) => {
             traceLog.add('<ATTACHMENTS.pathLabel.adjustEdge>'); // [DEBUG/]
             if (attachProps.bBox) {
               ATTACHMENTS.captionLabel.adjustEdge(edge, attachProps.bBox, attachProps.strokeWidth / 2);
@@ -6753,7 +6821,7 @@ var LeaderLine = (() => {
         }
       },
 
-      initSvg(attachProps, props) {
+      initSvg(attachProps, props: Props) {
         traceLog.add('<ATTACHMENTS.pathLabel.initSvg>'); // [DEBUG/]
 
         const text = ATTACHMENTS.pathLabel.newText(

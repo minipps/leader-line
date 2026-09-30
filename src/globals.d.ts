@@ -1,3 +1,16 @@
+// Globals `src/` relies on that the DOM types do not declare.
+
+// `path-data-polyfill.js`: the SVG Paths API draft (https://svgwg.org/specs/paths/#InterfaceSVGPathData).
+interface PathDataSegment {
+  type: string;
+  values: number[];
+}
+
+interface SVGPathElement {
+  getPathData(options?: { normalize?: boolean }): PathDataSegment[];
+  setPathData(pathData: PathDataSegment[]): void;
+}
+
 // The `[DEBUG]` hooks: internals `src/` exposes on `window` for the test pages. The build
 // removes them. The helpers and the defs they read in the test pages are the globals of
 // `anim.ts`, `defs.js` and `path-data-polyfill.js`, typed from their declarations.

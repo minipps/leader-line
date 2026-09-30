@@ -13,7 +13,7 @@
     "strict": false
   },
   "files": [
-    "debug.d.ts",
+    "globals.d.ts",
     "defs.js",
     "path-data-polyfill/path-data-polyfill.js",
     "../test/traceLog.js",
