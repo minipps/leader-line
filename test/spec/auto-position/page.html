@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- Use setTimeout instead of requestAnimationFrame for animation. -->
+  <script>window.requestAnimationFrame = function(cb) { return setTimeout(cb, 1000 / 60); };
+    window.cancelAnimationFrame = function(id) { clearTimeout(id); };</script>
+  <script src="/src/defs.js"></script>
+  <script src="/src/anim.js"></script>
+  <script src="/src/path-data-polyfill/path-data-polyfill.js"></script>
+  <script src="/traceLog.js"></script>
+  <script src="/src/leader-line.js"></script>
+  <style>
+    body { margin: 0; }
+    .box { position: absolute; width: 60px; height: 30px; background-color: rgba(150, 255, 127, 0.5); }
+    #container { position: absolute; left: 0; top: 0; width: 600px; height: 400px; }
+    #container.moved { left: 50px; }
+    #container.sliding { transition: left 300ms linear; }
+    #scroller { position: absolute; left: 20px; top: 250px; width: 200px; height: 100px; overflow: auto; }
+    #scroller-content { position: relative; height: 400px; }
+    #spinner { position: absolute; right: 0; top: 0; width: 10px; height: 10px; animation: spin 200ms linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="elm1" class="box" style="left: 10px; top: 10px;"></div>
+    <div id="elm2" class="box" style="left: 300px; top: 150px;"></div>
+    <div id="scroller"><div id="scroller-content"><div id="elm3" class="box" style="left: 10px; top: 50px;"></div></div></div>
+  </div>
+  <div id="elm4" class="box" style="left: 500px; top: 450px;"></div>
+</body>
+</html>

@@ -93,6 +93,12 @@ declare namespace LeaderLine {
     dash?: boolean | DashOptions;
     gradient?: boolean | GradientOptions;
     dropShadow?: boolean | DropShadowOptions;
+    /**
+     * Reposition the line by itself when its elements move: when they or their ancestors are
+     * resized, change `class` or `style`, or scroll, and frame by frame during CSS transitions.
+     * Default `false`.
+     */
+    autoPosition?: boolean;
   }
 
   interface ConstructorOptions extends Options {
@@ -271,6 +277,7 @@ declare class LeaderLine {
   dash: boolean | LeaderLine.DashOptions;
   gradient: boolean | LeaderLine.GradientOptions;
   dropShadow: boolean | LeaderLine.DropShadowOptions;
+  autoPosition: boolean;
 
   /** Set several options at once, with a single redraw. */
   setOptions(options: LeaderLine.Options): this;

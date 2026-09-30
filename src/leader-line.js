@@ -3050,6 +3050,130 @@ var LeaderLine = (() => {
    * @param {Object} needs - `group` of stats.
    * @returns {void}
    */
+  // Transitions of these properties do not move anything: they don't keep `autoPosition` going.
+  const RE_PAINT_ONLY_PROPERTY =
+    /^(?:color|background(?:-color|-image)?|opacity|visibility|(?:box|text)-shadow|filter|backdrop-filter|outline(?:-color)?|border(?:-(?:top|right|bottom|left))?-color|fill|stroke|caret-color|text-decoration-color|accent-color)$/;
+
+  /**
+   * The elements `start` and `end` are drawn from (the element of an attachment).
+   * @param {props} props - `props` of `LeaderLine` instance.
+   * @returns {Element[]} `[start, end]`.
+   */
+  function getAnchorElements(props) {
+    return props.options.anchorSE.map((anchor, i) =>
+      props.optionIsAttach.anchorSE[i] !== false ? insAttachProps[anchor._id].element : anchor
+    );
+  }
+
+  /**
+   * `autoPosition`: reposition the line when its elements may have moved, at most once per frame.
+   * Watched: resizing, `class` and `style` changes and child changes of the elements and their
+   * ancestors (out of frames too), scrolling, and, frame by frame while they run, the CSS
+   * transitions of the documents and the CSS animations of those elements.
+   * @param {props} props - `props` of `LeaderLine` instance.
+   * @param {Element[]} elements - The anchor elements.
+   * @returns {{elements: Element[], stop: function}} The watcher.
+   */
+  function watchPosition(props, elements) {
+    const chain = new Set();
+    const views = new Set();
+    elements.forEach((element) => {
+      let node = element;
+      while (node) {
+        chain.add(node);
+        views.add(node.ownerDocument.defaultView);
+        node = node.parentElement ?? node.ownerDocument.defaultView.frameElement;
+      }
+    });
+
+    const baseWindow = props.baseWindow;
+    const observers = [];
+    const listeners = [];
+    let requestId = null;
+    let stopped = false;
+
+    function isMoving() {
+      for (const view of views) {
+        for (const animation of view.document.getAnimations()) {
+          if (animation.playState === 'running' || animation.pending) {
+            if (animation.transitionProperty != null) {
+              if (!RE_PAINT_ONLY_PROPERTY.test(animation.transitionProperty)) {
+                return true;
+              }
+            } else if (chain.has(animation.effect?.target)) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    function frame() {
+      requestId = null;
+      if (stopped) {
+        return;
+      }
+      update(props, { position: true });
+      if (isMoving()) {
+        schedule();
+      }
+    }
+
+    function schedule() {
+      requestId ??= baseWindow.requestAnimationFrame(frame);
+    }
+
+    views.forEach((view) => {
+      const resizeObserver = new view.ResizeObserver(schedule);
+      const mutationObserver = new view.MutationObserver(schedule);
+      chain.forEach((node) => {
+        if (node.ownerDocument.defaultView === view) {
+          resizeObserver.observe(node);
+          mutationObserver.observe(node, { attributes: true, attributeFilter: ['class', 'style'], childList: true });
+        }
+      });
+      observers.push(resizeObserver, mutationObserver);
+      ['scroll', 'transitionrun', 'animationstart'].forEach((type) => {
+        view.document.addEventListener(type, schedule, { capture: true, passive: true });
+        listeners.push([view.document, type]);
+      });
+    });
+
+    return {
+      elements,
+      stop() {
+        stopped = true;
+        observers.forEach((observer) => observer.disconnect());
+        listeners.forEach(([target, type]) => target.removeEventListener(type, schedule, { capture: true }));
+        if (requestId != null) {
+          baseWindow.cancelAnimationFrame(requestId);
+          requestId = null;
+        }
+      }
+    };
+  }
+
+  /**
+   * Start, restart (the elements changed) or stop the `autoPosition` watcher.
+   * @param {props} props - `props` of `LeaderLine` instance.
+   * @returns {void}
+   */
+  function syncAutoPosition(props) {
+    const watcher = props.positionWatcher;
+    const elements = props.options.autoPosition ? getAnchorElements(props) : null;
+    if (watcher && elements && watcher.elements.every((element, i) => element === elements[i])) {
+      return;
+    }
+    if (watcher) {
+      watcher.stop();
+      props.positionWatcher = null;
+    }
+    if (elements) {
+      props.positionWatcher = watchPosition(props, elements);
+    }
+  }
+
   function update(props, needs) {
     const updated = {};
     if (needs.line) {
@@ -3380,6 +3504,10 @@ var LeaderLine = (() => {
       throw new Error('`start` and `end` are required.');
     }
 
+    if (Object.hasOwn(newOptions, 'autoPosition')) {
+      options.autoPosition = !!newOptions.autoPosition;
+    }
+
     // Check window.
     if (
       needsWindow &&
@@ -3663,6 +3791,7 @@ var LeaderLine = (() => {
     // [/DEBUG]
 
     update(props, needs);
+    syncAutoPosition(props);
     emit(props, 'options', { options: Object.keys(newOptions) });
   }
 
@@ -4538,6 +4667,10 @@ var LeaderLine = (() => {
       curStats = props.curStats;
 
     emit(props, 'remove');
+    if (props.positionWatcher) {
+      props.positionWatcher.stop();
+      props.positionWatcher = null;
+    }
     Object.keys(EFFECTS).forEach((effectName) => {
       const keyAnimId = effectName + '_animId';
       if (curStats[keyAnimId]) {
@@ -4556,6 +4689,16 @@ var LeaderLine = (() => {
     }
     delete insProps[this._id];
   };
+
+  Object.defineProperty(LeaderLine.prototype, 'autoPosition', {
+    get() {
+      return !!insProps[this._id].options.autoPosition;
+    },
+    set(value) {
+      this.setOptions({ autoPosition: value });
+    },
+    enumerable: true
+  });
 
   /**
    * Listen to the events of this line: `update`, `position`, `options`, `show`, `hide`,

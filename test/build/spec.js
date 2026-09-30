@@ -140,6 +140,20 @@ describe('built files', function () {
     line.remove();
   });
 
+  it('autoPosition repositions the line when an element moves', async function () {
+    var win = await loadFrame('<script src="/package/leader-line.min.js"></script>'),
+      line = new win.LeaderLine(win.document.getElementById('a'), win.document.getElementById('b'), {
+        autoPosition: true,
+      }),
+      moved = new Promise(function (resolve) {
+        line.addEventListener('position', resolve);
+      });
+    win.document.getElementById('b').style.left = '1000px';
+    await moved;
+    expect(paintedBox(win.document.querySelector('svg.leader-line')).right).toBeGreaterThan(920);
+    line.remove();
+  });
+
   it('does not expose the debug hooks of the source', async function () {
     var win = await loadFrame('<script src="/package/leader-line.min.js"></script>');
     [

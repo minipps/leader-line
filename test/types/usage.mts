@@ -11,6 +11,9 @@ line.startSocketGravity = [192, -172];
 line.position().setOptions({ outline: true, outlineSize: 0.06 });
 new LeaderLine({ start, end: LeaderLine.areaAnchor(end, 'circle', { color: 'red' }), hide: true });
 LeaderLine.positionByWindowResize = false;
+line.autoPosition = true;
+const watched: boolean = line.autoPosition;
+void watched;
 
 line.addEventListener('update', (event) => {
   const changed: LeaderLine.UpdatedPart[] = event.detail.changed;
