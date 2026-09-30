@@ -52,14 +52,14 @@ The module reads `document` and listens to `window` as soon as it is loaded, so 
 
 ### Development
 
-Node.js 22 or later. `npm test` runs the specs in headless Chromium (`npx playwright install chromium` first, or set `CHROME` to a Chromium binary).
+Node.js 22.13 or later. The source is TypeScript (`src/*.ts`, not strict yet) that only needs its types stripped: the build and the test server do it with Node's `stripTypeScriptTypes`, so the library code runs as written. `npm test` runs the specs in headless Chromium (`npx playwright install chromium` first, or set `CHROME` to a Chromium binary).
 
 | Script | |
 | --- | --- |
 | `npm run build` | `leader-line.min.js`, `leader-line.mjs` and `types/leader-line.d.mts` from `src/` |
 | `npm run build:defs` | `src/defs.js`, after changing `src/symbols.html` or `src/leader-line.css` |
 | `npm test` | the Jasmine specs of the source, and a smoke test of the built files |
-| `npm run test:types` | type-checks a consumer of the declarations, as ESM and as CommonJS |
+| `npm run test:types` | type-checks `src/`, and a consumer of the declarations, as ESM and as CommonJS |
 | `npm run test:serve` | serves `test/` at http://localhost:8080/ to run the specs and the visual tests in a browser |
 | `npm run lint`, `npm run format` | oxlint (with the e18e rules) and oxfmt |
 | `npm run check` | all of the above |

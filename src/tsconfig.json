@@ -1,0 +1,23 @@
+{
+  // Type-checks `src/`. The `.js` files are the classic-script globals the library reads in the
+  // test pages (the build inlines them instead); they are only read for their types.
+  "compilerOptions": {
+    "noEmit": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": [],
+    // The build and the test server only strip the types.
+    "erasableSyntaxOnly": true,
+    "allowJs": true,
+    "checkJs": false,
+    "strict": false
+  },
+  "files": [
+    "debug.d.ts",
+    "defs.js",
+    "path-data-polyfill/path-data-polyfill.js",
+    "../test/traceLog.js",
+    "anim.ts",
+    "leader-line.ts"
+  ]
+}

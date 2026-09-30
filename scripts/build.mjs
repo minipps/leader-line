@@ -4,17 +4,21 @@
 // - `leader-line.mjs`      ES module, `export default LeaderLine`.
 // - `types/leader-line.d.mts`, generated from `types/leader-line.d.ts`.
 //
-// `src/leader-line.js` runs as-is in the test pages, reading its helpers and the SVG defs from
-// globals. For the build, every `[DEBUG]` region is removed, which uncomments the
-// `@INCLUDE[code:NAME]@` placeholders, and those are replaced by the code they name.
+// `src/leader-line.ts` runs in the test pages with only its types stripped, reading its helpers
+// and the SVG defs from globals. For the build, the types are stripped the same way, every
+// `[DEBUG]` region is removed, which uncomments the `@INCLUDE[code:NAME]@` placeholders, and
+// those are replaced by the code they name.
 
 import { readFile, writeFile } from 'node:fs/promises';
+import { stripTypeScriptTypes } from 'node:module';
 import vm from 'node:vm';
 import { minifySync } from 'oxc-minify';
 import { removeTag } from './pre-proc.mjs';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
+/** A file of `src/`: its types are stripped, as the test server does. */
+const readSrc = async (path) => (path.endsWith('.ts') ? stripTypeScriptTypes(await read(path)) : read(path));
 const write = async (path, content) => {
   await writeFile(new URL(path, root), content);
   console.log(`File "${path}" created.`);
@@ -47,15 +51,15 @@ async function getCode() {
     code[name] = toCode(context[name], sentinel);
   }
   // An expression, included as an initializer: without the statement's semicolon, if any.
-  const pickExport = async (path) => (await read(path)).replace(RE_EXPORT, '$1').replace(RE_FINAL_SEMICOLON, '');
-  code.anim = await pickExport('src/anim.js');
+  const pickExport = async (path) => (await readSrc(path)).replace(RE_EXPORT, '$1').replace(RE_FINAL_SEMICOLON, '');
+  code.anim = await pickExport('src/anim.ts');
   code.pathDataPolyfill = await pickExport('src/path-data-polyfill/path-data-polyfill.js');
   return code;
 }
 
 const pkg = JSON.parse(await read('package.json'));
 const code = await getCode();
-const source = (await read('src/leader-line.js')).replace(RE_INCLUDE, (match, name) => {
+const source = (await readSrc('src/leader-line.ts')).replace(RE_INCLUDE, (match, name) => {
   if (typeof code[name] !== 'string') throw new Error(`Unknown include: ${name}`);
   return code[name];
 });

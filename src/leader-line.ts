@@ -11,30 +11,41 @@ var LeaderLine = (() => {
   'use strict';
 
   /**
-   * An object that simulates `DOMRect` to indicate a bounding-box.
-   * @typedef {Object} BBox
-   * @property {(number|null)} left - ScreenCTM
-   * @property {(number|null)} top - ScreenCTM
-   * @property {(number|null)} right - ScreenCTM
-   * @property {(number|null)} bottom - ScreenCTM
-   * @property {(number|null)} x - Substitutes for left
-   * @property {(number|null)} y - Substitutes for top
-   * @property {(number|null)} width
-   * @property {(number|null)} height
+   * Named values: the `props` of the instances and attachments, their options and stats, and
+   * the other records the updates pass around.
    */
+  type Dict = Record<string, any>;
 
-  /**
-   * An object that has coordinates of ScreenCTM.
-   * @typedef {Object} Point
-   * @property {number} x
-   * @property {number} y
-   */
+  /** An object that simulates `DOMRect` to indicate a bounding-box, in ScreenCTM. */
+  interface BBox {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+    /** Substitutes for left */
+    x?: number;
+    /** Substitutes for top */
+    y?: number;
+    width: number;
+    height: number;
+  }
 
-  /**
-   * @typedef {Object} AnimOptions
-   * @property {number} duration
-   * @property {(string|number[])} timing - FUNC_KEYS or [x1, y1, x2, y2]
-   */
+  /** An object that has coordinates of ScreenCTM. */
+  interface Point {
+    x: number;
+    y: number;
+  }
+
+  interface DirPoint extends Point {
+    /** DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT of PATH_GRID; SOCKET_* correspond with them. */
+    dirId?: number;
+  }
+
+  interface AnimOptions {
+    duration: number;
+    /** FUNC_KEYS or [x1, y1, x2, y2] */
+    timing: string | number[];
+  }
 
   const APP_ID = 'leader-line'; // Supported SVG 2 features
 
@@ -56,23 +67,6 @@ var LeaderLine = (() => {
     magnet: PATH_MAGNET,
     grid: PATH_GRID
   };
-
-  /**
-   * @typedef {Object} SymbolConf
-   * @property {string} elmId
-   * @property {BBox} bBox
-   * @property {number} widthR
-   * @property {number} heightR
-   * @property {number} bCircle
-   * @property {number} sideLen
-   * @property {number} backLen
-   * @property {number} overhead
-   * @property {(boolean|null)} noRotate
-   * @property {(number|null)} outlineBase
-   * @property {(number|null)} outlineMax
-   */
-
-  /** @typedef {{symbolId: string, SymbolConf}} SYMBOLS */
 
   const PLUG_BEHIND = 'behind';
 
@@ -201,7 +195,7 @@ var LeaderLine = (() => {
    * @param {Object} [detail] - Additional properties of `detail`.
    * @returns {void}
    */
-  function emit(props, type, detail) {
+  function emit(props, type, detail?) {
     const line = props.instance;
     const target = eventTargets.get(line);
     const init = { detail: { line, ...detail } };
@@ -352,7 +346,7 @@ var LeaderLine = (() => {
    * @param {string} color - A color notation such as `'rgba(10, 20, 30, 0.6)'`.
    * @returns {Array} Alpha channel ([0, 1]) such as `0.6`, and base color. e.g. [0.6, 'rgb(10, 20, 30)']
    */
-  function getAlpha(color) {
+  function getAlpha(color): [alpha: number, baseColor: string] {
     let matches,
       func,
       args,
@@ -471,8 +465,8 @@ var LeaderLine = (() => {
    * @param {boolean} [relWindow] - Whether it's relative to the element's window, or document (i.e. `<html>`).
    * @returns {(BBox|null)} A bounding-box or null when failed.
    */
-  function getBBox(element, relWindow) {
-    const bBox = {};
+  function getBBox(element, relWindow?) {
+    const bBox = {} as BBox;
     let rect;
     let prop;
     let doc;
@@ -525,7 +519,7 @@ var LeaderLine = (() => {
    * @param {Window} [baseWindow] - Start searching at this window. This is excluded from result.
    * @returns {(Element[]|null)} An array of `<iframe>` elements or null when `baseWindow` was not found in the path.
    */
-  function getFrames(element, baseWindow) {
+  function getFrames(element, baseWindow?) {
     const frames = [];
     let curElement = element;
     let doc;
@@ -572,7 +566,7 @@ var LeaderLine = (() => {
       return getBBox(element);
     }
     frames.forEach((frame, i) => {
-      let coordinates = getBBox(frame, i > 0); // relative to document when 1st one.
+      let coordinates: { left: number; top: number } = getBBox(frame, i > 0); // relative to document when 1st one.
       left += coordinates.left;
       top += coordinates.top;
       coordinates = getContentOffset(frame);
@@ -685,7 +679,7 @@ var LeaderLine = (() => {
   }
   window.getPointOnCubic = getPointOnCubic; // [DEBUG/]
 
-  function getCubicLength(p0, p1, p2, p3, t) {
+  function getCubicLength(p0, p1, p2, p3, t?) {
     function base3(t, p0v, p1v, p2v, p3v) {
       return t * (t * (-3 * p0v + 9 * p1v - 9 * p2v + 3 * p3v) + 6 * p0v - 12 * p1v + 6 * p2v) - 3 * p0v + 3 * p1v;
     }
@@ -798,7 +792,9 @@ var LeaderLine = (() => {
     const pathSegsLen = [];
     let pathLenAll = 0;
     pathList.forEach((points) => {
-      const pathLen = (points.length === 2 ? getPointsLength : getCubicLength)(...points);
+      const pathLen = (points.length === 2 ? getPointsLength : getCubicLength)(
+        ...(points as [Point, Point, Point, Point])
+      );
       pathSegsLen.push(pathLen);
       pathLenAll += pathLen;
     });
@@ -991,7 +987,7 @@ var LeaderLine = (() => {
    * @returns {Object} {elmFilter, elmOffset, elmBlur, styleFlood, elmsAppend}
    */
   function newDropShadow(document, id) {
-    const dropShadow = {};
+    const dropShadow: Dict = {};
     let filter;
     let element;
 
@@ -1050,7 +1046,7 @@ var LeaderLine = (() => {
     });
   }
 
-  function setStat(props, container, key, value, eventHandlers /* [DEBUG] */, log /* [/DEBUG] */) {
+  function setStat(props, container, key, value, eventHandlers? /* [DEBUG] */, log? /* [/DEBUG] */) {
     if (value !== container[key]) {
       traceLog.add(log || key + '=%s', value); // [DEBUG/]
       container[key] = value;
@@ -1940,7 +1936,7 @@ var LeaderLine = (() => {
     let updated = false;
 
     function getSocketXY(bBox, socketId) {
-      const socketXY =
+      const socketXY: Point & { socketId?: number } =
         socketId === SOCKET_TOP
           ? { x: bBox.left + bBox.width / 2, y: bBox.top }
           : socketId === SOCKET_RIGHT
@@ -1952,7 +1948,7 @@ var LeaderLine = (() => {
       return socketXY;
     }
 
-    function socketXY2Point(socketXY) {
+    function socketXY2Point(socketXY): DirPoint {
       return { x: socketXY.x, y: socketXY.y };
     }
 
@@ -2209,12 +2205,6 @@ var LeaderLine = (() => {
 
         case PATH_GRID:
           /* @EXPORT[file:../test/spec/func/PATH_GRID]@ */ (() => {
-            /**
-             * @typedef {Object} DirPoint
-             * @property {number} dirId - DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT
-             * @property {number} x
-             * @property {number} y
-             */
             const DIR_UP = 1;
 
             const DIR_RIGHT = 2;
@@ -2241,8 +2231,8 @@ var LeaderLine = (() => {
               return dirId === DIR_RIGHT || dirId === DIR_LEFT ? 'x' : 'y';
             }
 
-            function getNextDirPoint(dirPoint, len, dirId) {
-              const newDirPoint = { x: dirPoint.x, y: dirPoint.y };
+            function getNextDirPoint(dirPoint, len, dirId?) {
+              const newDirPoint: DirPoint = { x: dirPoint.x, y: dirPoint.y };
               if (dirId) {
                 if (dirId === reverseDir(dirPoint.dirId)) {
                   throw new Error('Invalid dirId: ' + dirId);
@@ -2501,7 +2491,7 @@ var LeaderLine = (() => {
 
             if (pathPoints.length === 2) {
               // Straight line
-              pathSegsLen[iSeg] = pathSegsLen[iSeg] || getPointsLength(...pathPoints);
+              pathSegsLen[iSeg] = pathSegsLen[iSeg] || getPointsLength(...(pathPoints as [Point, Point]));
               if (pathSegsLen[iSeg] > MIN_ADJUST_LEN) {
                 if (pathSegsLen[iSeg] - plugOverhead < MIN_ADJUST_LEN) {
                   plugOverhead = pathSegsLen[iSeg] - MIN_ADJUST_LEN;
@@ -2516,7 +2506,7 @@ var LeaderLine = (() => {
               }
             } else {
               // Cubic bezier
-              pathSegsLen[iSeg] = pathSegsLen[iSeg] || getCubicLength(...pathPoints);
+              pathSegsLen[iSeg] = pathSegsLen[iSeg] || getCubicLength(...(pathPoints as [Point, Point, Point, Point]));
               if (pathSegsLen[iSeg] > MIN_ADJUST_LEN) {
                 if (pathSegsLen[iSeg] - plugOverhead < MIN_ADJUST_LEN) {
                   plugOverhead = pathSegsLen[iSeg] - MIN_ADJUST_LEN;
@@ -3137,8 +3127,8 @@ var LeaderLine = (() => {
    * @returns {{elements: Element[], stop: function}} The watcher.
    */
   function watchPosition(props, elements) {
-    const chain = new Set();
-    const views = new Set();
+    const chain = new Set<Element>();
+    const views = new Set<Window & typeof globalThis>();
     elements.forEach((element) => {
       let node = element;
       while (node) {
@@ -3158,11 +3148,11 @@ var LeaderLine = (() => {
       for (const view of views) {
         for (const animation of view.document.getAnimations()) {
           if (animation.playState === 'running' || animation.pending) {
-            if (animation.transitionProperty != null) {
-              if (!RE_PAINT_ONLY_PROPERTY.test(animation.transitionProperty)) {
+            if ((animation as CSSTransition).transitionProperty != null) {
+              if (!RE_PAINT_ONLY_PROPERTY.test((animation as CSSTransition).transitionProperty)) {
                 return true;
               }
-            } else if (chain.has(animation.effect?.target)) {
+            } else if (chain.has((animation.effect as KeyframeEffect)?.target)) {
               return true;
             }
           }
@@ -3243,7 +3233,7 @@ var LeaderLine = (() => {
    * @returns {void}
    */
   function update(props, needs) {
-    const updated = {};
+    const updated: Dict = {};
     if (needs.line) {
       updated.line = updateLine(props);
     }
@@ -3365,7 +3355,7 @@ var LeaderLine = (() => {
     emit(props, props.aplStats.show_on ? 'shown' : 'hidden', { effect: effectName });
   }
 
-  function getValidAnimOptions(animOptions, defaultAnimOptions) {
+  function getValidAnimOptions(animOptions, defaultAnimOptions: AnimOptions): AnimOptions {
     return {
       duration:
         isFinite(animOptions.duration) && animOptions.duration > 0 ? animOptions.duration : defaultAnimOptions.duration,
@@ -3376,7 +3366,7 @@ var LeaderLine = (() => {
   function show(props, on, showEffectName, animOptions) {
     const curStats = props.curStats;
     const aplStats = props.aplStats;
-    const update = {};
+    const update: Dict = {};
     let timeRatio;
 
     function applyStats() {
@@ -3474,7 +3464,7 @@ var LeaderLine = (() => {
    * @param {boolean} [dontRemove] - Don't call `removeAttachment()`.
    * @returns {void}
    */
-  function unbindAttachment(props, attachProps, dontRemove) {
+  function unbindAttachment(props, attachProps, dontRemove?) {
     let i = props.attachments.indexOf(attachProps);
     if (i > -1) {
       props.attachments.splice(i, 1);
@@ -3533,10 +3523,10 @@ var LeaderLine = (() => {
 
     let newWindow;
     let needsWindow;
-    const needs = {};
+    const needs: Dict = {};
 
     function getCurOption(root, propName, optionName, index, defaultValue) {
-      const curOption = {};
+      const curOption: Dict = {};
       if (optionName) {
         if (index != null) {
           curOption.container = root[optionName];
@@ -3554,7 +3544,7 @@ var LeaderLine = (() => {
       return curOption;
     }
 
-    function setValidId(root, newOptions, propName, key2Id, optionName, index, defaultValue) {
+    function setValidId(root, newOptions, propName, key2Id, optionName, index, defaultValue?) {
       const curOption = getCurOption(root, propName, optionName, index, defaultValue);
       let updated;
       let key;
@@ -3575,7 +3565,7 @@ var LeaderLine = (() => {
       return updated;
     }
 
-    function setValidType(root, newOptions, propName, type, optionName, index, defaultValue, check, trim) {
+    function setValidType(root, newOptions, propName, type, optionName, index, defaultValue, check?, trim?) {
       const curOption = getCurOption(root, propName, optionName, index, defaultValue);
       let updated;
       let value;
@@ -3673,7 +3663,7 @@ var LeaderLine = (() => {
         return array1.length === array2.length && array1.every((value1, i) => value1 === array2[i]);
       }
 
-      let value = false; // `false` means no-update input.
+      let value: false | null | number | number[] = false; // `false` means no-update input.
       if (newOption != null) {
         if (Array.isArray(newOption)) {
           if (isFinite(newOption[0]) && isFinite(newOption[1])) {
@@ -4654,7 +4644,7 @@ var LeaderLine = (() => {
    * @param {Object} [options] - Initial options.
    */
   function LeaderLine(start, end, options) {
-    const props = {
+    const props: Dict = {
       // Initialize properties as array.
       options: {
         anchorSE: [],
@@ -4762,13 +4752,15 @@ var LeaderLine = (() => {
       });
     });
     // Setup option accessor methods (key-to-id)
-    [
-      ['path', PATH_KEY_2_ID],
-      ['startSocket', SOCKET_KEY_2_ID, 'socketSE', 0],
-      ['endSocket', SOCKET_KEY_2_ID, 'socketSE', 1],
-      ['startPlug', PLUG_KEY_2_ID, 'plugSE', 0],
-      ['endPlug', PLUG_KEY_2_ID, 'plugSE', 1]
-    ].forEach((conf) => {
+    (
+      [
+        ['path', PATH_KEY_2_ID],
+        ['startSocket', SOCKET_KEY_2_ID, 'socketSE', 0],
+        ['endSocket', SOCKET_KEY_2_ID, 'socketSE', 1],
+        ['startPlug', PLUG_KEY_2_ID, 'plugSE', 0],
+        ['endPlug', PLUG_KEY_2_ID, 'plugSE', 1]
+      ] as [string, Dict, string?, number?][]
+    ).forEach((conf) => {
       const propName = conf[0],
         key2Id = conf[1],
         optionName = conf[2],
@@ -4979,7 +4971,7 @@ var LeaderLine = (() => {
      * @param {Array} args - Initial options.
      */
     function LeaderLineAttachment(conf, args) {
-      const attachProps = { conf, curStats: {}, aplStats: {}, boundTargets: [] };
+      const attachProps: Dict = { conf, curStats: {}, aplStats: {}, boundTargets: [] };
       let attachOptions;
       const shortOptions = {};
 
@@ -5203,7 +5195,7 @@ var LeaderLine = (() => {
           Array.isArray(attachOptions.points) &&
           attachOptions.points.length >= 3 &&
           attachOptions.points.every((point) => {
-            const validPoint = {};
+            const validPoint: Dict = {};
             if (
               (validPoint.x = ATTACHMENTS.pointAnchor.parsePercent(point[0], true)) &&
               (validPoint.y = ATTACHMENTS.pointAnchor.parsePercent(point[1], true))
@@ -5383,7 +5375,7 @@ var LeaderLine = (() => {
         const llStats = attachProps.boundTargets.length ? attachProps.boundTargets[0].props.curStats : null;
         let elementBBox;
         let value;
-        const updated = {};
+        const updated: Dict = {};
 
         updated.strokeWidth = setStat(
           attachProps,

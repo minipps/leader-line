@@ -1,10 +1,12 @@
-// Static server for the test pages: `test/` at the root, `src/` at `/src`, the built files at
-// `/package/<file>`, and the few packages the pages load from `node_modules` at `/<package name>`.
+// Static server for the test pages: `test/` at the root, `src/` at `/src` (`.ts` files with their
+// types stripped), the built files at `/package/<file>`, and the few packages the pages load from
+// `node_modules` at `/<package name>`.
 //
 //   node test/server.mjs [port=8080]   then open http://localhost:8080/
 
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { stripTypeScriptTypes } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,6 +29,7 @@ const TYPES = {
   '.html': 'text/html',
   '.js': 'text/javascript',
   '.mjs': 'text/javascript',
+  '.ts': 'text/javascript',
   '.css': 'text/css',
   '.json': 'application/json',
   '.svg': 'image/svg+xml',
@@ -50,7 +53,8 @@ export function startServer(port = 8080) {
     const file = resolve(new URL(request.url, 'http://localhost').pathname);
     try {
       if (!file) throw Object.assign(new Error('Forbidden'), { code: 'ENOENT' });
-      const body = await readFile(file.endsWith(path.sep) ? path.join(file, 'index.html') : file);
+      let body = await readFile(file.endsWith(path.sep) ? path.join(file, 'index.html') : file);
+      if (file.endsWith('.ts')) body = stripTypeScriptTypes(body.toString());
       response.writeHead(200, {
         'Content-Type': TYPES[path.extname(file)] ?? 'application/octet-stream',
         'Cache-Control': 'no-cache, must-revalidate',
