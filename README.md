@@ -1,6 +1,6 @@
 # LeaderLine
 
-[![npm](https://img.shields.io/npm/v/@minipps/leader-line.svg)](https://www.npmjs.com/package/@minipps/leader-line) [![GitHub issues](https://img.shields.io/github/issues/minipps/leader-line.svg)](https://github.com/minipps/leader-line/issues) [![dependencies](https://img.shields.io/badge/dependencies-No%20dependency-brightgreen.svg)](package.json) [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/leader-line-plus.svg)](https://www.npmjs.com/package/leader-line-plus) [![GitHub issues](https://img.shields.io/github/issues/minipps/leader-line.svg)](https://github.com/minipps/leader-line/issues) [![dependencies](https://img.shields.io/badge/dependencies-No%20dependency-brightgreen.svg)](package.json) [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Draw a leader line in your web page.
 
@@ -13,11 +13,11 @@ This is a fork of [anseki/leader-line](https://github.com/anseki/leader-line), w
 - **TypeScript declarations** for the whole API, for both `import` and `require`.
 
 ```sh
-npm install @minipps/leader-line
+npm install leader-line-plus
 ```
 
 ```js
-import LeaderLine from '@minipps/leader-line';
+import LeaderLine from 'leader-line-plus';
 
 const line = new LeaderLine(startElement, endElement, {color: 'coral', path: 'fluid'});
 ```
