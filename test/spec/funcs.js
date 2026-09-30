@@ -441,6 +441,35 @@ describe('funcs', function() {
 
   });
 
+  describe('getAllPathListLen()', function() {
+    var getAllPathListLen, pageDone;
+
+    beforeAll(function(beforeDone) {
+      loadPage('spec/funcs/funcs.html', function(window, document, body, done) {
+        getAllPathListLen = window.getAllPathListLen;
+        pageDone = done;
+        beforeDone();
+      });
+    });
+
+    afterAll(function() {
+      pageDone();
+    });
+
+    it('sums straight and cubic segments', function() {
+      var len = getAllPathListLen([
+        [{x: 0, y: 0}, {x: 3, y: 4}], // straight: 5
+        [{x: 3, y: 4}, {x: 3, y: 10}], // straight: 6
+        [{x: 3, y: 10}, {x: 3, y: 12}, {x: 3, y: 14}, {x: 3, y: 16}] // cubic along a line: 6
+      ]);
+      expect(len.segsLen.length).toBe(3);
+      expect(len.segsLen[0]).toBeCloseTo(5, 6);
+      expect(len.segsLen[1]).toBeCloseTo(6, 6);
+      expect(len.segsLen[2]).toBeCloseTo(6, 3);
+      expect(len.lenAll).toBeCloseTo(17, 3);
+    });
+  });
+
   describe('isElement()', function() {
     var document, isElement, IS_WEBKIT, pageDone;
 

@@ -777,6 +777,7 @@ var LeaderLine = (() => {
     });
     return { segsLen: pathSegsLen, lenAll: pathLenAll };
   }
+  window.getAllPathListLen = getAllPathListLen; // [DEBUG/]
 
   function getAllPathDataLen(pathData) {
     let curPoint;
