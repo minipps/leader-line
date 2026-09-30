@@ -1,7 +1,7 @@
 {
   "name": "leader-line-plus",
-  "version": "1.1.0",
-  "description": "Draw a leader line in your web page. A maintained fork of anseki/leader-line with ES module and TypeScript support.",
+  "version": "2.0.0",
+  "description": "Draw a leader line in your web page. A maintained fork of anseki/leader-line: ES module, TypeScript, events, auto-positioning and native animations.",
   "keywords": [
     "arrow",
     "attention",
