@@ -1,4 +1,4 @@
-/* global getSource:false, testCasesSvg:false */
+/* global getSourceExport:false, testCasesSvg:false */
 
 (function() {
   'use strict';
@@ -382,7 +382,7 @@
   }
 
   window.addEventListener('load', function() {
-    getSource('../spec/func/PATH_GRID', function(error, source) {
+    getSourceExport('PATH_GRID', function(error, source) {
       if (error) { throw error; }
       func = eval('(' + source + ')'); // eslint-disable-line no-eval
       cases();

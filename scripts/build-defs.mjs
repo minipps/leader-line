@@ -3,13 +3,13 @@
 // headless Chromium the tests run in. Run it only after changing one of those two files.
 
 import { readFile, writeFile } from 'node:fs/promises';
-import htmlclean from 'htmlclean';
 import { launch } from './browser.mjs';
 
 const APP_ID = 'leader-line';
 const DEFS_ID = `${APP_ID}-defs`;
 const DEFAULT_LINE_SIZE = 4; // DEFAULT_OPTIONS.lineSize
 const root = new URL('../', import.meta.url);
+const RE_SPACE_BETWEEN_TAGS = />\s+</g;
 
 /** Enough CSS minification for `leader-line.css`: comments, whitespace and last semicolons. */
 function minifyCss(css) {
@@ -110,11 +110,11 @@ try {
   });
 
   const css = minifyCss(await readFile(new URL('src/leader-line.css', root), 'utf8'));
-  // htmlclean also compacts the path data of the symbols.
-  const defsHtml = htmlclean(
+  // The path data in `symbols.html` is kept compacted, so only the indentation is left to remove.
+  const defsHtml = (
     `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="${DEFS_ID}">` +
-      `<style><![CDATA[${css}]]></style><defs>${markup}</defs></svg>`,
-  );
+    `<style><![CDATA[${css}]]></style><defs>${markup}</defs></svg>`
+  ).replace(RE_SPACE_BETWEEN_TAGS, '><');
   const code = {
     DEFS_HTML: `'${defsHtml.replace(/'/g, "\\'")}'`,
     PLUG_BEHIND: "'behind'",

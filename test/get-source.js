@@ -1,4 +1,4 @@
-/* exported getSource */
+/* exported getSource, getSourceExport */
 
 var getSource = (function() {
   'use strict';
@@ -33,3 +33,20 @@ var getSource = (function() {
 
   return getSource;
 })();
+
+/**
+ * Gets the code between `/* @EXPORT[test:NAME]@ *\/` and `/* @/EXPORT@ *\/` in the source (served
+ * with its types stripped): a part of `updatePosition()` that a spec runs alone, in its own context.
+ */
+function getSourceExport(name, cb) {
+  'use strict';
+  getSource('/src/leader-line.ts', function(error, source) {
+    var start = '/* @EXPORT[test:' + name + ']@ */', i, end;
+    if (error) { return void cb(error); }
+    if ((i = source.indexOf(start)) < 0 || (end = source.indexOf('/* @/EXPORT@ */', i)) < 0) {
+      return void cb(new Error('Not found in the source: ' + start));
+    }
+    // The formatter keeps the `(` of an immediate call before the end marker.
+    cb(null, source.slice(i + start.length, end).replace(/\)\s*\(\s*$/, ')'));
+  });
+}

@@ -65,7 +65,7 @@
     {
       // The library is one IIFE that runs once: its top-level regular expressions are already
       // compiled once, which this rule cannot tell from a function called on every update.
-      "files": ["src/**/*.js"],
+      "files": ["src/**/*.js", "src/**/*.ts"],
       "rules": { "e18e/prefer-static-regex": "off" }
     },
     {

@@ -23,3 +23,8 @@
   top: 0;
   background-color: rgba(255, 127, 205, 0.8);
 }
+
+.draggable {
+  cursor: move;
+  touch-action: none;
+}

@@ -159,7 +159,7 @@ var anim = // @EXPORT@
        * @param {number|boolean} [timeRatio] - Play from the midst. [0, 1], or `false` that prevents it starting.
        * @returns {number} animId to control the task.
        */
-      add(valueCallback, frameCallback, duration, count, timing, reverse, timeRatio) {
+      add(valueCallback, frameCallback, duration, count, timing, reverse, timeRatio?) {
         const animId = ++newAnimId;
         let task;
         let frames;
@@ -272,7 +272,7 @@ var anim = // @EXPORT@
        * @param {boolean} [getTimeRatioByFrame] - Return timeRatio of last frame that ran. [0, 1]
        * @returns {(number|undefined)} timeRatio [0, 1]
        */
-      stop(animId, getTimeRatioByFrame) {
+      stop(animId, getTimeRatioByFrame?) {
         let timeRatio;
         tasks.some((task) => {
           if (task.animId === animId) {
