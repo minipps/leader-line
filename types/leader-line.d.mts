@@ -62,6 +62,17 @@ declare namespace LeaderLine {
     opacity?: number;
   }
 
+  interface FlowOptions {
+    /** Length of the dashes, in pixels; `0` (the default) draws dots. */
+    len?: number | 'auto';
+    /** Distance from one dash to the next, in pixels. Default: 3 times `size`. */
+    gap?: number | 'auto';
+    /** Pixels per second. Default `80`. */
+    speed?: number;
+    /** Flow from `end` to `start`. Default `false`. */
+    reverse?: boolean;
+  }
+
   interface Options {
     start?: Anchor;
     end?: Anchor;
@@ -93,6 +104,16 @@ declare namespace LeaderLine {
     dash?: boolean | DashOptions;
     gradient?: boolean | GradientOptions;
     dropShadow?: boolean | DropShadowOptions;
+    /**
+     * Dashes or dots that move along the line at a constant speed, e.g. traffic on a cable.
+     * It takes over from `dash` while it is on.
+     */
+    flow?: boolean | FlowOptions;
+    /**
+     * Move the line to its new position over `duration` instead of jumping. `true`:
+     * `{duration: 150, timing: 'ease-out'}`. Default `false`.
+     */
+    smoothPosition?: boolean | AnimOptions;
     /**
      * Reposition the line by itself when its elements move: when they or their ancestors are
      * resized, change `class` or `style`, or scroll, and frame by frame during CSS transitions.
@@ -208,6 +229,13 @@ declare class LeaderLine {
   /** Reposition the lines when the window is resized. Default `true`. */
   static positionByWindowResize: boolean;
 
+  /**
+   * Leave the motion out: effects show and hide at once, dashes and flows stay still, lines
+   * jump to their new position. `'auto'` (the default) follows the `prefers-reduced-motion`
+   * user preference; `true` and `false` override it.
+   */
+  static reducedMotion: 'auto' | boolean;
+
   /** Listen to the events of every line. */
   static addEventListener<K extends keyof LeaderLine.EventMap>(
     type: K,
@@ -277,6 +305,8 @@ declare class LeaderLine {
   dash: boolean | LeaderLine.DashOptions;
   gradient: boolean | LeaderLine.GradientOptions;
   dropShadow: boolean | LeaderLine.DropShadowOptions;
+  flow: boolean | LeaderLine.FlowOptions;
+  smoothPosition: false | Required<LeaderLine.AnimOptions>;
   autoPosition: boolean;
 
   /** Set several options at once, with a single redraw. */

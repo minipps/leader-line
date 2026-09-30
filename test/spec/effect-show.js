@@ -583,7 +583,9 @@ describe('effect-show', function() {
           value = props.curStats.show_animId;
           ll.hide('fade');
           expect(traceLog.log).toContain('<SHOW_EFFECTS.fade.init>');
-          expect(window.animTasks.length).toBe(1);
+          // the task of draw is removed, fade is a native animation of the SVG
+          expect(window.animTasks.length).toBe(0);
+          expect(props.svg.getAnimations().length).toBe(1);
           expect(props.curStats.show_animId).not.toBe(value);
 
           pageDone();
@@ -648,16 +650,18 @@ describe('effect-show', function() {
         var props = window.insProps[ll._id], value;
 
         ll.hide('fade');
-        expect(window.animTasks.length).toBe(1);
+        // fade is a native animation of the SVG, not a task of `anim`
+        expect(window.animTasks.length).toBe(0);
+        expect(props.svg.getAnimations().length).toBe(1);
         setTimeout(function() {
           expect(props.curStats.show_inAnim).toBe(true); // check
-          expect(window.animTasks.length).toBe(1);
 
           traceLog.clear();
           value = props.curStats.show_animId;
           ll.hide('draw');
           expect(traceLog.log).toContain('<SHOW_EFFECTS.draw.init>');
           expect(window.animTasks.length).toBe(1);
+          expect(props.svg.getAnimations().length).toBe(0); // the fade was cancelled
           expect(props.curStats.show_animId).not.toBe(value);
 
           pageDone();

@@ -12,6 +12,13 @@ line.position().setOptions({ outline: true, outlineSize: 0.06 });
 new LeaderLine({ start, end: LeaderLine.areaAnchor(end, 'circle', { color: 'red' }), hide: true });
 LeaderLine.positionByWindowResize = false;
 line.autoPosition = true;
+line.flow = { speed: 120, reverse: true };
+line.smoothPosition = { duration: 200, timing: [0.4, 0, 0.2, 1] };
+line.setOptions({ smoothPosition: true, flow: true });
+LeaderLine.reducedMotion = 'auto';
+LeaderLine.reducedMotion = true;
+// @ts-expect-error: not a setting
+LeaderLine.reducedMotion = 'never';
 const watched: boolean = line.autoPosition;
 void watched;
 

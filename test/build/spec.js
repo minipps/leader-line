@@ -154,6 +154,21 @@ describe('built files', function () {
     line.remove();
   });
 
+  it('runs fade, dash and flow as native animations', async function () {
+    var win = await loadFrame('<script src="/package/leader-line.min.js"></script>'),
+      line = new win.LeaderLine(win.document.getElementById('a'), win.document.getElementById('b')),
+      svg = win.document.querySelector('svg.leader-line');
+    line.hide('fade', { duration: 1000 });
+    expect(svg.getAnimations().length).toBe(1);
+    line.show('none');
+    line.flow = { speed: 100 };
+    expect(svg.getAnimations({ subtree: true }).length).toBe(1);
+    win.LeaderLine.reducedMotion = true;
+    line.flow = { speed: 200 };
+    expect(svg.getAnimations({ subtree: true }).length).toBe(0);
+    line.remove();
+  });
+
   it('does not expose the debug hooks of the source', async function () {
     var win = await loadFrame('<script src="/package/leader-line.min.js"></script>');
     [

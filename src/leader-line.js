@@ -2097,6 +2097,7 @@ var LeaderLine = (() => {
     ) {
       // New position
       traceLog.add('new-position'); // [DEBUG/]
+      const shownPathList = props.pathList.animVal || props.pathList.baseVal;
       props.pathList.baseVal = pathList = [];
       props.pathList.animVal = null;
 
@@ -2585,6 +2586,7 @@ var LeaderLine = (() => {
       aplStats.position_lineStrokeWidth = curStats.position_lineStrokeWidth;
       aplStats.position_socketGravitySE = copyTree(curSocketGravitySE);
       updated = true;
+      smoothPath(props, shownPathList);
 
       if (props.events.apl_position) {
         props.events.apl_position.forEach((handler) => {
@@ -2608,6 +2610,60 @@ var LeaderLine = (() => {
    * @param {props} props - `props` of `LeaderLine` instance.
    * @returns {boolean} `true` if it was changed.
    */
+  const DEFAULT_SMOOTH_POSITION = { duration: 150, timing: 'ease-out' };
+
+  /**
+   * `smoothPosition`: move the shown path to the new one, point by point, instead of jumping.
+   * Only between paths of the same shape (segments and points): a `grid` path that turns once
+   * more jumps. Not while the `draw` effect draws the path, nor with reduced motion.
+   * @param {props} props - `props` of `LeaderLine` instance.
+   * @param {(Array|undefined)} fromPathList - The path list that was shown.
+   * @returns {void}
+   */
+  function smoothPath(props, fromPathList) {
+    const curStats = props.curStats,
+      animOptions = props.options.smoothPosition,
+      toPathList = props.pathList.baseVal;
+    if (curStats.position_animId) {
+      anim.remove(curStats.position_animId);
+      curStats.position_animId = null;
+    }
+    if (
+      !animOptions ||
+      !fromPathList ||
+      fromPathList.length !== toPathList.length ||
+      fromPathList.some((points, i) => points.length !== toPathList[i].length) ||
+      (curStats.show_inAnim && props.aplStats.show_effect === 'draw') ||
+      isReducedMotion(props)
+    ) {
+      return;
+    }
+    traceLog.add('smoothPath'); // [DEBUG/]
+    props.pathList.animVal = fromPathList;
+    curStats.position_animId = anim.add(
+      (outputRatio) =>
+        fromPathList.map((points, i) =>
+          points.map((point, j) => {
+            const to = toPathList[i][j];
+            return { x: point.x + (to.x - point.x) * outputRatio, y: point.y + (to.y - point.y) * outputRatio };
+          })
+        ),
+      (value, finish) => {
+        if (finish) {
+          curStats.position_animId = null;
+          props.pathList.animVal = null;
+        } else {
+          props.pathList.animVal = value;
+        }
+        update(props, { path: true });
+      },
+      animOptions.duration,
+      1,
+      animOptions.timing,
+      false
+    );
+  }
+
   function updatePath(props) {
     traceLog.add('<updatePath>'); // [DEBUG/]
     const curStats = props.curStats;
@@ -3019,13 +3075,25 @@ var LeaderLine = (() => {
     const aplStats = props.aplStats;
     let enabled;
 
+    // `flow` and `dash` both dash the line, and `flow` wins: effects are removed before any is
+    // applied, so that the one turned on is not undone by the one turned off.
+    const isEnabled = (effectName) =>
+      curStats[effectName + '_enabled'] && !(effectName === 'dash' && curStats.flow_enabled);
+    Object.keys(EFFECTS).forEach((effectName) => {
+      if (aplStats[effectName + '_enabled'] && !isEnabled(effectName)) {
+        setStat(props, aplStats, effectName + '_enabled', false);
+        EFFECTS[effectName].remove(props);
+      }
+    });
+
     Object.keys(EFFECTS).forEach((effectName) => {
       const effectConf = EFFECTS[effectName],
         keyEnabled = effectName + '_enabled',
         keyOptions = effectName + '_options',
         curOptions = curStats[keyOptions];
 
-      if (setStat(props, aplStats, keyEnabled, (enabled = curStats[keyEnabled]))) {
+      enabled = isEnabled(effectName);
+      if (setStat(props, aplStats, keyEnabled, enabled)) {
         // ON/OFF
         if (enabled) {
           aplStats[keyOptions] = copyTree(curOptions);
@@ -3044,12 +3112,6 @@ var LeaderLine = (() => {
     traceLog.add('</setEffect>'); // [DEBUG/]
   }
 
-  /**
-   * Apply current `options`.
-   * @param {props} props - `props` of `LeaderLine` instance.
-   * @param {Object} needs - `group` of stats.
-   * @returns {void}
-   */
   // Transitions of these properties do not move anything: they don't keep `autoPosition` going.
   const RE_PAINT_ONLY_PROPERTY =
     /^(?:color|background(?:-color|-image)?|opacity|visibility|(?:box|text)-shadow|filter|backdrop-filter|outline(?:-color)?|border(?:-(?:top|right|bottom|left))?-color|fill|stroke|caret-color|text-decoration-color|accent-color)$/;
@@ -3174,6 +3236,12 @@ var LeaderLine = (() => {
     }
   }
 
+  /**
+   * Apply current `options`.
+   * @param {props} props - `props` of `LeaderLine` instance.
+   * @param {Object} needs - `group` of stats.
+   * @returns {void}
+   */
   function update(props, needs) {
     const updated = {};
     if (needs.line) {
@@ -3233,6 +3301,60 @@ var LeaderLine = (() => {
   }
 
   /**
+   * CSS `easing` of a `timing` option: a keyword, or `[x1, y1, x2, y2]` of `cubic-bezier()`.
+   * @param {(string|number[])} timing - `timing` of `AnimOptions`.
+   * @returns {string} `easing` of the Web Animations API.
+   */
+  function toEasing(timing) {
+    return typeof timing === 'string' ? timing : 'cubic-bezier(' + timing.join(', ') + ')';
+  }
+
+  /**
+   * Position [0, 1] of a native animation in its current iteration, in playing forward time.
+   * @param {Animation} animation - Animation of the Web Animations API.
+   * @returns {number} timeRatio
+   */
+  function getAnimTimeRatio(animation) {
+    const duration = animation.effect.getTiming().duration;
+    if (!duration) {
+      return animation.playbackRate < 0 ? 0 : 1;
+    }
+    const time = animation.currentTime ?? 0;
+    return animation.effect.getTiming().iterations === Infinity
+      ? (time % duration) / duration
+      : Math.min(Math.max(time / duration, 0), 1);
+  }
+
+  /**
+   * Stop and drop an animation: a native `Animation`, or a task of `anim`.
+   * @param {(Animation|number)} animId - The animation.
+   * @returns {void}
+   */
+  function removeAnim(animId) {
+    if (animId && typeof animId === 'object') {
+      animId.onfinish = null;
+      animId.cancel();
+    } else if (animId) {
+      anim.remove(animId);
+    }
+  }
+
+  /**
+   * Whether to leave the motion out: `LeaderLine.reducedMotion` overrides, with `true` or
+   * `false`, the `prefers-reduced-motion` user preference that is followed by default.
+   * @param {props} props - `props` of `LeaderLine` instance.
+   * @returns {boolean} `true` when the animations have to be left out.
+   */
+  function isReducedMotion(props) {
+    const setting = LeaderLine.reducedMotion;
+    if (typeof setting === 'boolean') {
+      return setting;
+    }
+    const win = props.baseWindow || window;
+    return !!win.matchMedia && win.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  /**
    * Finish the show effect: it ran to its end, or it has no animation.
    * @param {props} props - `props` of `LeaderLine` instance.
    * @param {string} effectName - Key of `SHOW_EFFECTS`.
@@ -3270,6 +3392,12 @@ var LeaderLine = (() => {
         isObject(animOptions) ? animOptions : {},
         SHOW_EFFECTS[showEffectName].defaultAnimOptions
       );
+    }
+    // Reduced motion: no animation this time, the chosen effect is kept for the next times.
+    const chosenEffect = isReducedMotion(props) && [curStats.show_effect, curStats.show_animOptions];
+    if (chosenEffect) {
+      curStats.show_effect = 'none';
+      curStats.show_animOptions = {};
     }
 
     update.show_on = curStats.show_on !== aplStats.show_on;
@@ -3315,6 +3443,10 @@ var LeaderLine = (() => {
     });
     traceLog.add('</show>');
     // [/DEBUG]
+
+    if (chosenEffect) {
+      [curStats.show_effect, curStats.show_animOptions] = chosenEffect;
+    }
   }
 
   /**
@@ -3506,6 +3638,12 @@ var LeaderLine = (() => {
 
     if (Object.hasOwn(newOptions, 'autoPosition')) {
       options.autoPosition = !!newOptions.autoPosition;
+    }
+    if (Object.hasOwn(newOptions, 'smoothPosition')) {
+      const value = newOptions.smoothPosition;
+      options.smoothPosition = value
+        ? getValidAnimOptions(isObject(value) ? value : {}, DEFAULT_SMOOTH_POSITION)
+        : false;
     }
 
     // Check window.
@@ -3840,7 +3978,7 @@ var LeaderLine = (() => {
         const curStats = props.curStats;
         removeEventHandler(props, 'apl_line_strokeWidth', EFFECTS.dash.update);
         if (curStats.dash_animId) {
-          anim.remove(curStats.dash_animId);
+          removeAnim(curStats.dash_animId);
           curStats.dash_animId = null;
         }
         props.lineFace.style.strokeDasharray = 'none';
@@ -3877,8 +4015,9 @@ var LeaderLine = (() => {
           ) {
             traceLog.add('anim.remove'); // [DEBUG/]
             if (curStats.dash_animId) {
-              timeRatio = anim.stop(curStats.dash_animId);
-              anim.remove(curStats.dash_animId);
+              timeRatio = getAnimTimeRatio(curStats.dash_animId);
+              removeAnim(curStats.dash_animId);
+              curStats.dash_animId = null;
             }
             aplStats.dash_animOptions = null;
           }
@@ -3886,17 +4025,20 @@ var LeaderLine = (() => {
           if (!aplStats.dash_animOptions) {
             // OFF -> ON
             traceLog.add('anim.add'); // [DEBUG/]
-            curStats.dash_animId = anim.add(
-              (outputRatio) => (1 - outputRatio) * aplStats.dash_maxOffset + 'px',
-              (value) => {
-                props.lineFace.style.strokeDashoffset = value;
-              },
-              curStats.dash_animOptions.duration,
-              0,
-              curStats.dash_animOptions.timing,
-              false,
-              timeRatio
-            );
+            // Native, endless; left out with reduced motion (static dashes).
+            if (!isReducedMotion(props)) {
+              const animation = (curStats.dash_animId = props.lineFace.animate(
+                [{ strokeDashoffset: aplStats.dash_maxOffset + 'px' }, { strokeDashoffset: '0px' }],
+                {
+                  duration: curStats.dash_animOptions.duration,
+                  easing: toEasing(curStats.dash_animOptions.timing),
+                  iterations: Infinity
+                }
+              ));
+              if (timeRatio != null) {
+                animation.currentTime = timeRatio * curStats.dash_animOptions.duration;
+              }
+            }
             aplStats.dash_animOptions = copyTree(curStats.dash_animOptions);
           }
         } else if (aplStats.dash_animOptions) {
@@ -3904,7 +4046,7 @@ var LeaderLine = (() => {
           // Normally, anim was already removed when effectOptions was changed.
           traceLog.add('anim.remove'); // [DEBUG/]
           if (curStats.dash_animId) {
-            anim.remove(curStats.dash_animId);
+            removeAnim(curStats.dash_animId);
             curStats.dash_animId = null;
           }
           props.lineFace.style.strokeDashoffset = 0;
@@ -3912,6 +4054,74 @@ var LeaderLine = (() => {
         }
 
         traceLog.add('</EFFECTS.dash.update>'); // [DEBUG/]
+      }
+    },
+
+    /**
+     * Dashes or dots that move along the line at a constant speed, e.g. traffic on a cable.
+     * `len` (0: dots), `gap` (auto: 3 times the line size), `speed` (px/s), `reverse`.
+     */
+    flow: {
+      stats: { flow_len: {}, flow_gap: {}, flow_speed: {}, flow_reverse: {} },
+
+      optionsConf: [
+        ['type', 'len', 'number', null, null, null, (value) => value >= 0],
+        ['type', 'gap', 'number', null, null, null, (value) => value > 0],
+        ['type', 'speed', 'number', null, null, 80, (value) => value > 0],
+        ['type', 'reverse', 'boolean', null, null, false]
+      ],
+
+      init(props) {
+        traceLog.add('<EFFECTS.flow.init>'); // [DEBUG/]
+        addEventHandler(props, 'apl_line_strokeWidth', EFFECTS.flow.update);
+        props.lineFace.style.strokeLinecap = 'round';
+        EFFECTS.flow.update(props);
+        traceLog.add('</EFFECTS.flow.init>'); // [DEBUG/]
+      },
+
+      remove(props) {
+        traceLog.add('<EFFECTS.flow.remove>'); // [DEBUG/]
+        const curStats = props.curStats,
+          style = props.lineFace.style;
+        removeEventHandler(props, 'apl_line_strokeWidth', EFFECTS.flow.update);
+        removeAnim(curStats.flow_animId);
+        curStats.flow_animId = null;
+        style.strokeDasharray = 'none';
+        style.strokeDashoffset = 0;
+        style.strokeLinecap = '';
+        initStats(props.aplStats, EFFECTS.flow.stats);
+        traceLog.add('</EFFECTS.flow.remove>'); // [DEBUG/]
+      },
+
+      update(props) {
+        traceLog.add('<EFFECTS.flow.update>'); // [DEBUG/]
+        const curStats = props.curStats,
+          aplStats = props.aplStats,
+          effectOptions = aplStats.flow_options;
+        let update = false;
+
+        curStats.flow_len = effectOptions.len ?? 0;
+        curStats.flow_gap = effectOptions.gap ?? aplStats.line_strokeWidth * 3;
+        curStats.flow_speed = effectOptions.speed;
+        curStats.flow_reverse = effectOptions.reverse;
+        ['flow_len', 'flow_gap', 'flow_speed', 'flow_reverse'].forEach((key) => {
+          update = setStat(props, aplStats, key, curStats[key]) || update;
+        });
+
+        if (update) {
+          const period = aplStats.flow_len + aplStats.flow_gap;
+          props.lineFace.style.strokeDasharray = aplStats.flow_len + ',' + aplStats.flow_gap;
+          removeAnim(curStats.flow_animId);
+          curStats.flow_animId = null;
+          // Native, endless; left out with reduced motion (static dots).
+          if (!isReducedMotion(props)) {
+            curStats.flow_animId = props.lineFace.animate(
+              [{ strokeDashoffset: '0px' }, { strokeDashoffset: (aplStats.flow_reverse ? period : -period) + 'px' }],
+              { duration: (period / aplStats.flow_speed) * 1000, iterations: Infinity }
+            );
+          }
+        }
+        traceLog.add('</EFFECTS.flow.update>'); // [DEBUG/]
       }
     },
 
@@ -4198,7 +4408,7 @@ var LeaderLine = (() => {
         traceLog.add('<SHOW_EFFECTS.none.init>'); // [DEBUG/]
         const curStats = props.curStats;
         if (curStats.show_animId) {
-          anim.remove(curStats.show_animId);
+          removeAnim(curStats.show_animId);
           curStats.show_animId = null;
         }
         SHOW_EFFECTS.none.start(props, timeRatio);
@@ -4239,34 +4449,29 @@ var LeaderLine = (() => {
         traceLog.add('<SHOW_EFFECTS.fade.init>'); // [DEBUG/]
         const curStats = props.curStats,
           aplStats = props.aplStats;
-        if (curStats.show_animId) {
-          anim.remove(curStats.show_animId);
-        }
-        curStats.show_animId = anim.add(
-          (outputRatio) => outputRatio,
-          (value, finish) => {
-            if (finish) {
-              finishShow(props, 'fade');
-            } else {
-              props.svg.style.opacity = value + '';
-            }
-          },
-          aplStats.show_animOptions.duration,
-          1,
-          aplStats.show_animOptions.timing,
-          null,
-          false
-        );
+        removeAnim(curStats.show_animId);
+        // Native: the opacity of the SVG is animated by the browser, off the main thread.
+        const animation = (curStats.show_animId = props.svg.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: aplStats.show_animOptions.duration,
+          easing: toEasing(aplStats.show_animOptions.timing),
+          fill: 'both'
+        }));
+        animation.pause();
+        animation.onfinish = () => {
+          finishShow(props, 'fade');
+        };
         SHOW_EFFECTS.fade.start(props, timeRatio);
         traceLog.add('</SHOW_EFFECTS.fade.init>'); // [DEBUG/]
       },
 
       start(props, timeRatio) {
         traceLog.add('<SHOW_EFFECTS.fade.start>'); // [DEBUG/]
-        const curStats = props.curStats;
+        const curStats = props.curStats,
+          animation = curStats.show_animId,
+          on = props.aplStats.show_on;
         let prevTimeRatio;
         if (curStats.show_inAnim) {
-          prevTimeRatio = anim.stop(curStats.show_animId);
+          prevTimeRatio = getAnimTimeRatio(animation);
         }
         svgShow(props, 1);
         // [DEBUG]
@@ -4275,7 +4480,9 @@ var LeaderLine = (() => {
         );
         // [/DEBUG]
         curStats.show_inAnim = true;
-        anim.start(curStats.show_animId, !props.aplStats.show_on, timeRatio ?? prevTimeRatio);
+        animation.playbackRate = on ? 1 : -1;
+        animation.currentTime = (timeRatio ?? prevTimeRatio ?? (on ? 0 : 1)) * animation.effect.getTiming().duration;
+        animation.play();
         traceLog.add('</SHOW_EFFECTS.fade.start>'); // [DEBUG/]
       },
 
@@ -4284,16 +4491,23 @@ var LeaderLine = (() => {
         traceLog.add('finish=' + finish); // [DEBUG/]
         // [DEBUG]
         const dbgLog = 'on=' + (on != null ? 'on' : 'aplStats.show_on');
-
         // [/DEBUG]
-        const curStats = props.curStats;
-
+        const curStats = props.curStats,
+          animation = curStats.show_animId;
         let timeRatio;
         on = on ?? props.aplStats.show_on;
         traceLog.add(dbgLog + '=' + on); // [DEBUG/]
-        timeRatio = curStats.show_inAnim ? anim.stop(curStats.show_animId) : on ? 1 : 0;
+        if (curStats.show_inAnim && animation) {
+          timeRatio = getAnimTimeRatio(animation);
+          animation.pause();
+        } else {
+          timeRatio = on ? 1 : 0;
+        }
         curStats.show_inAnim = false;
         if (finish) {
+          if (animation) {
+            animation.cancel(); // It can be played again by `start()`.
+          }
           props.svg.style.opacity = on ? '' : '0';
           svgShow(props, on);
         }
@@ -4313,9 +4527,7 @@ var LeaderLine = (() => {
           allPathLen = getAllPathListLen(pathList),
           pathSegsLen = allPathLen.segsLen,
           pathLenAll = allPathLen.lenAll;
-        if (curStats.show_animId) {
-          anim.remove(curStats.show_animId);
-        }
+        removeAnim(curStats.show_animId);
 
         curStats.show_animId = anim.add(
           (outputRatio) => {
@@ -4672,14 +4884,10 @@ var LeaderLine = (() => {
       props.positionWatcher = null;
     }
     Object.keys(EFFECTS).forEach((effectName) => {
-      const keyAnimId = effectName + '_animId';
-      if (curStats[keyAnimId]) {
-        anim.remove(curStats[keyAnimId]);
-      }
+      removeAnim(curStats[effectName + '_animId']);
     });
-    if (curStats.show_animId) {
-      anim.remove(curStats.show_animId);
-    }
+    removeAnim(curStats.show_animId);
+    removeAnim(curStats.position_animId);
     props.attachments.slice().forEach((attachProps) => {
       unbindAttachment(props, attachProps);
     });
@@ -4689,6 +4897,17 @@ var LeaderLine = (() => {
     }
     delete insProps[this._id];
   };
+
+  Object.defineProperty(LeaderLine.prototype, 'smoothPosition', {
+    get() {
+      const value = insProps[this._id].options.smoothPosition;
+      return value ? copyTree(value) : false;
+    },
+    set(value) {
+      this.setOptions({ smoothPosition: value });
+    },
+    enumerable: true
+  });
 
   Object.defineProperty(LeaderLine.prototype, 'autoPosition', {
     get() {
@@ -6707,6 +6926,9 @@ var LeaderLine = (() => {
   Object.keys(ATTACHMENTS).forEach((attachmentName) => {
     LeaderLine[attachmentName] = (...args) => new LeaderLineAttachment(ATTACHMENTS[attachmentName], args);
   });
+
+  // `'auto'`: follow the `prefers-reduced-motion` user preference; `true`/`false` override it.
+  LeaderLine.reducedMotion = 'auto';
 
   // Update position automatically
   LeaderLine.positionByWindowResize = true;
