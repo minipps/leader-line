@@ -442,13 +442,12 @@ describe('funcs', function() {
   });
 
   describe('isElement()', function() {
-    var document, isElement, IS_TRIDENT, IS_WEBKIT, pageDone;
+    var document, isElement, IS_WEBKIT, pageDone;
 
     beforeAll(function(beforeDone) {
       loadPage('spec/funcs/isElement.html', function(window, frmDocument, body, done) {
         document = frmDocument;
         isElement = window.isElement;
-        IS_TRIDENT = window.IS_TRIDENT;
         IS_WEBKIT = window.IS_WEBKIT;
         pageDone = done;
         beforeDone();
@@ -516,19 +515,13 @@ describe('funcs', function() {
 
     it('HTMLOptionsCollection:false', function() {
       var element = document.getElementsByTagName('select')[0].options;
-      if (!IS_TRIDENT) { // [TRIDENT] `<select>.options` returns itself.
-        expect(Object.prototype.toString.apply(element)).toBe('[object HTMLOptionsCollection]');
-        expect(isElement(element)).toBe(false);
-      } else {
-        expect(true).toBe(true); // dummy
-      }
+      expect(Object.prototype.toString.apply(element)).toBe('[object HTMLOptionsCollection]');
+      expect(isElement(element)).toBe(false);
     });
 
     it('HTMLFormControlsCollection:false', function() {
       var element = document.forms[0].elements;
-      if (!IS_TRIDENT) { // [TRIDENT] The class is not supported.
-        expect(Object.prototype.toString.apply(element)).toBe('[object HTMLFormControlsCollection]');
-      }
+      expect(Object.prototype.toString.apply(element)).toBe('[object HTMLFormControlsCollection]');
       expect(isElement(element)).toBe(false);
     });
 
@@ -624,19 +617,13 @@ describe('funcs', function() {
 
     it('Another window HTMLOptionsCollection:false', function() {
       var element = document.getElementById('iframe-1').contentDocument.getElementsByTagName('select')[0].options;
-      if (!IS_TRIDENT) { // [TRIDENT] `<select>.options` returns itself.
-        expect(Object.prototype.toString.apply(element)).toBe('[object HTMLOptionsCollection]');
-        expect(isElement(element)).toBe(false);
-      } else {
-        expect(true).toBe(true); // dummy
-      }
+      expect(Object.prototype.toString.apply(element)).toBe('[object HTMLOptionsCollection]');
+      expect(isElement(element)).toBe(false);
     });
 
     it('Another window HTMLFormControlsCollection:false', function() {
       var element = document.getElementById('iframe-1').contentDocument.forms[0].elements;
-      if (!IS_TRIDENT) { // [TRIDENT] The class is not supported.
-        expect(Object.prototype.toString.apply(element)).toBe('[object HTMLFormControlsCollection]');
-      }
+      expect(Object.prototype.toString.apply(element)).toBe('[object HTMLFormControlsCollection]');
       expect(isElement(element)).toBe(false);
     });
 

@@ -607,7 +607,7 @@ describe('BBox', function() {
             document.getElementById('rect1')),
           aplStats = window.insProps[ll._id].aplStats,
           bBox = document.getElementById('rect1').getBoundingClientRect(),
-          TOLERANCE = window.IS_TRIDENT ? 3 : 0.1;
+          TOLERANCE = 0.1;
 
         // {x: 205, y: 216, width: 20, height: 20}
         expect(bBox.left - 205).toBeLessThan(TOLERANCE);

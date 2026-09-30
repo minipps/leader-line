@@ -27,7 +27,7 @@ describe('attachment', function() {
   function loadBefore(beforeDone) {
     jasmine.addMatchers(customMatchers);
     loadPage('spec/common/page.html', function(frmWindow, frmDocument, body, done) {
-      TOLERANCE = frmWindow.IS_WEBKIT ? 10 : frmWindow.IS_GECKO || frmWindow.IS_TRIDENT ? 5 : 1;
+      TOLERANCE = frmWindow.IS_WEBKIT ? 10 : frmWindow.IS_GECKO ? 5 : 1;
       FONT_TOLERANCE = TOLERANCE + 2;
       IS_WEBKIT = frmWindow.IS_WEBKIT;
 

@@ -11,27 +11,10 @@ var anim =
         'ease-in-out': [0.42, 0, 0.58, 1]
       },
       MSPF = 1000 / 60 / 2, // precision ms/frame (FPS: 60)
-      requestAnim =
-        window.requestAnimationFrame ||
-        window.mozRequestAnimationFrame ||
-        window.webkitRequestAnimationFrame ||
-        window.msRequestAnimationFrame ||
-        function (callback) {
-          setTimeout(callback, MSPF);
-        },
-      cancelAnim =
-        window.cancelAnimationFrame ||
-        window.mozCancelAnimationFrame ||
-        window.webkitCancelAnimationFrame ||
-        window.msCancelAnimationFrame ||
-        function (requestID) {
-          clearTimeout(requestID);
-        },
-      isFinite =
-        Number.isFinite ||
-        function (value) {
-          return typeof value === 'number' && window.isFinite(value);
-        },
+      // Read once: the test pages replace `requestAnimationFrame` before loading this.
+      requestAnim = window.requestAnimationFrame,
+      cancelAnim = window.cancelAnimationFrame,
+      isFinite = Number.isFinite,
       /**
        * @callback frameCallback
        * @param {} value - A value that was made by `valueCallback`.
@@ -132,7 +115,7 @@ var anim =
     window.anim_watchStart = function () {
       window.anim_watchTimer = setInterval(function () {
         if (playing !== window.anim_lastPlaying) {
-          document.body.style.backgroundColor = playing ? '#f7f6cb' : '#fff'; // not `''` for TRIDENT bug
+          document.body.style.backgroundColor = playing ? '#f7f6cb' : '';
           window.anim_lastPlaying = playing;
         }
         playing = false;

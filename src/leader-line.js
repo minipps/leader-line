@@ -102,25 +102,14 @@ var LeaderLine = (function () {
     CIRCLE_8_RAD = (1 / 4) * Math.PI,
     RE_PERCENT = /^\s*(\-?[\d\.]+)\s*(\%)?\s*$/,
     SVG_NS = 'http://www.w3.org/2000/svg',
-    IS_EDGE =
-      '-ms-scroll-limit' in document.documentElement.style &&
-      '-ms-ime-align' in document.documentElement.style &&
-      !window.navigator.msPointerEnabled,
-    IS_TRIDENT = !IS_EDGE && !!document.uniqueID, // Future Edge might support `document.uniqueID`.
     IS_GECKO = 'MozAppearance' in document.documentElement.style,
-    IS_BLINK =
-      !IS_EDGE &&
-      !IS_GECKO && // Edge has `window.chrome`, and future Gecko might have that.
-      !!window.chrome &&
-      !!window.CSS,
+    IS_BLINK = !IS_GECKO && !!window.chrome && !!window.CSS, // Future Gecko might have `window.chrome`.
     IS_WEBKIT =
-      !IS_EDGE &&
-      !IS_TRIDENT &&
       !IS_GECKO &&
       !IS_BLINK && // Some engines support `webkit-*` properties.
       !window.chrome &&
       'WebkitAppearance' in document.documentElement.style,
-    SHAPE_GAP = IS_TRIDENT || IS_EDGE ? 0.2 : 0.1,
+    SHAPE_GAP = 0.1,
     DEFAULT_OPTIONS = {
       path: PATH_FLUID,
       lineColor: 'coral',
@@ -149,11 +138,7 @@ var LeaderLine = (function () {
         );
       };
     })(),
-    isFinite =
-      Number.isFinite ||
-      function (value) {
-        return typeof value === 'number' && window.isFinite(value);
-      },
+    isFinite = Number.isFinite,
     /* [DEBUG/]
     anim = @INCLUDE[code:anim]@,
     [DEBUG/] */
@@ -263,23 +248,15 @@ var LeaderLine = (function () {
   window.insProps = insProps;
   window.insAttachProps = insAttachProps;
   window.isObject = isObject;
-  window.IS_TRIDENT = IS_TRIDENT;
   window.IS_BLINK = IS_BLINK;
   window.IS_GECKO = IS_GECKO;
-  window.IS_EDGE = IS_EDGE;
   window.IS_WEBKIT = IS_WEBKIT;
   window.engineFlags = function (flags) {
-    if (typeof flags.IS_TRIDENT === 'boolean') {
-      window.IS_TRIDENT = IS_TRIDENT = flags.IS_TRIDENT;
-    }
     if (typeof flags.IS_BLINK === 'boolean') {
       window.IS_BLINK = IS_BLINK = flags.IS_BLINK;
     }
     if (typeof flags.IS_GECKO === 'boolean') {
       window.IS_GECKO = IS_GECKO = flags.IS_GECKO;
-    }
-    if (typeof flags.IS_EDGE === 'boolean') {
-      window.IS_EDGE = IS_EDGE = flags.IS_EDGE;
     }
     if (typeof flags.IS_WEBKIT === 'boolean') {
       window.IS_WEBKIT = IS_WEBKIT = flags.IS_WEBKIT;
@@ -876,7 +853,7 @@ var LeaderLine = (function () {
   }
 
   function forceReflow(target) {
-    // for TRIDENT and BLINK bug (reflow like `offsetWidth` can't update)
+    // for BLINK bug (reflow like `offsetWidth` can't update)
     setTimeout(function () {
       var parent = target.parentNode,
         next = target.nextSibling;
@@ -955,11 +932,6 @@ var LeaderLine = (function () {
       width: bBox.width,
       height: bBox.height
     });
-
-    // [TRIDENT] markerOrient is not updated when plugSE is changed
-    if (IS_TRIDENT) {
-      forceReflowAdd(props, marked);
-    }
   }
 
   function getMarkerProps(i, symbolConf) {
@@ -985,7 +957,7 @@ var LeaderLine = (function () {
     }
 
     dropShadow.elmsAppend = [(dropShadow.elmFilter = filter = document.createElementNS(SVG_NS, 'filter'))];
-    // sizing for GECKO and TRIDENT
+    // sizing for GECKO
     filter.filterUnits.baseVal = SVGUnitTypes.SVG_UNIT_TYPE_USERSPACEONUSE;
     filter.x.baseVal.newValueSpecifiedUnits(SVGLength.SVG_LENGTHTYPE_PX, 0);
     filter.y.baseVal.newValueSpecifiedUnits(SVGLength.SVG_LENGTHTYPE_PX, 0);
@@ -1661,16 +1633,9 @@ var LeaderLine = (function () {
     ) {
       props.lineShape.style.strokeWidth = value + 'px';
       updated = true;
-      if (IS_GECKO || IS_TRIDENT) {
-        // [TRIDENT] plugsFace is not updated when lineSize is changed
+      if (IS_GECKO) {
         // [GECKO] plugsFace is ignored
         forceReflowAdd(props, props.lineShape);
-        if (IS_TRIDENT) {
-          // [TRIDENT] lineColor is ignored
-          forceReflowAdd(props, props.lineFace);
-          // [TRIDENT] lineMaskCaps is ignored when lineSize is changed
-          forceReflowAdd(props, props.lineMaskCaps);
-        }
       }
     }
 
@@ -1713,12 +1678,6 @@ var LeaderLine = (function () {
       ) {
         props.lineOutlineMaskShape.style.strokeWidth = value + 'px';
         updated = true;
-        if (IS_TRIDENT) {
-          // [TRIDENT] lineOutlineMaskCaps is ignored when lineSize is changed
-          forceReflowAdd(props, props.lineOutlineMaskCaps);
-          // [TRIDENT] lineOutlineColor is ignored
-          forceReflowAdd(props, props.lineOutlineFace);
-        }
       }
 
       if (
@@ -1733,12 +1692,6 @@ var LeaderLine = (function () {
       ) {
         props.lineMaskShape.style.strokeWidth = value + 'px';
         updated = true;
-        if (IS_TRIDENT) {
-          // [TRIDENT] lineOutlineMaskCaps is ignored when lineSize is changed
-          forceReflowAdd(props, props.lineOutlineMaskCaps);
-          // [TRIDENT] lineOutlineColor is ignored
-          forceReflowAdd(props, props.lineOutlineFace);
-        }
       }
     }
 
@@ -1807,9 +1760,9 @@ var LeaderLine = (function () {
           ) {
             props.plugFaceSE[i].style.fill = value;
             updated = true;
-            if ((IS_BLINK || IS_WEBKIT || IS_TRIDENT) && !curStats.line_colorTra) {
-              // [BLINK], [WEBKIT], [TRIDENT] capsMaskMarkerShapeSE is not updated when line has no alpha
-              forceReflowAdd(props, IS_TRIDENT ? props.lineMaskCaps : props.capsMaskLine);
+            if ((IS_BLINK || IS_WEBKIT) && !curStats.line_colorTra) {
+              // [BLINK], [WEBKIT] capsMaskMarkerShapeSE is not updated when line has no alpha
+              forceReflowAdd(props, props.capsMaskLine);
             }
           }
 
@@ -1887,11 +1840,6 @@ var LeaderLine = (function () {
             ) {
               props.plugOutlineFaceSE[i].style.fill = value;
               updated = true;
-              if (IS_TRIDENT) {
-                // [TRIDENT] lineMaskCaps is not updated when plugOutline_colorTraSE is changed
-                forceReflowAdd(props, props.lineMaskCaps);
-                forceReflowAdd(props, props.lineOutlineMaskCaps);
-              }
             }
 
             if (
@@ -2657,12 +2605,7 @@ var LeaderLine = (function () {
         aplStats.path_pathData = curPathData; // Since curPathData is new anytime, it doesn't need copy.
         updated = true;
 
-        if (IS_TRIDENT) {
-          // [TRIDENT] markerOrient is not updated when path is changed
-          forceReflowAdd(props, props.plugsFace);
-          // [TRIDENT] lineMaskCaps is ignored when path is changed
-          forceReflowAdd(props, props.lineMaskCaps);
-        } else if (IS_GECKO) {
+        if (IS_GECKO) {
           // [GECKO] path is not updated when path is changed
           forceReflowAdd(props, props.linePath);
         }
@@ -3826,16 +3769,7 @@ var LeaderLine = (function () {
         });
         props.efc_gradient_stopSE = [0, 1].map(function (i) {
           var element = props.efc_gradient_gradient.appendChild(baseDocument.createElementNS(SVG_NS, 'stop'));
-          try {
-            element.offset.baseVal = i; // offset === index
-          } catch (error) {
-            if (error.code === DOMException.NO_MODIFICATION_ALLOWED_ERR) {
-              // [TRIDENT] bug
-              element.setAttribute('offset', i);
-            } else {
-              throw error;
-            }
-          }
+          element.offset.baseVal = i; // offset === index
           return element;
         });
 
@@ -4166,11 +4100,6 @@ var LeaderLine = (function () {
               SHOW_EFFECTS.fade.stop(props, true);
             } else {
               props.svg.style.opacity = value + '';
-              // [TRIDENT] masks is ignored when opacity of svg is changed
-              if (IS_TRIDENT) {
-                forceReflowAdd(props, props.svg);
-                forceReflowApply(props);
-              }
             }
           },
           aplStats.show_animOptions.duration,
@@ -5496,24 +5425,7 @@ var LeaderLine = (function () {
 
         // height (simulate min-height with current style (particularly box-sizing))
         if (bBox.height < conf.minHeight) {
-          if (IS_TRIDENT) {
-            // `getComputedStyle().height` returns incorrect value
-            (function () {
-              var height = conf.minHeight;
-              if (curStyle.boxSizing === 'content-box') {
-                height -=
-                  parseFloat(curStyle.borderTopWidth) +
-                  parseFloat(curStyle.borderBottomWidth) +
-                  parseFloat(curStyle.paddingTop) +
-                  parseFloat(curStyle.paddingBottom);
-              } else if (curStyle.boxSizing === 'padding-box') {
-                height -= parseFloat(curStyle.borderTopWidth) + parseFloat(curStyle.borderBottomWidth);
-              }
-              attachProps.style.height = height + 'px';
-            })();
-          } else {
-            attachProps.style.height = parseFloat(curStyle.height) + (conf.minHeight - bBox.height) + 'px';
-          }
+          attachProps.style.height = parseFloat(curStyle.height) + (conf.minHeight - bBox.height) + 'px';
         }
 
         if (IS_WEBKIT) {

@@ -39,11 +39,7 @@ describe('window resize', function() {
       traceLog.enabled = true;
       pathDataHasChanged = window.pathDataHasChanged;
       pageDone = done;
-      if (window.IS_TRIDENT) { // Trident fires first `resize` event when a page was loaded.
-        setTimeout(beforeDone, 1000 / 60);
-      } else {
-        beforeDone();
-      }
+      beforeDone();
     }, 'window resize');
   });
 
