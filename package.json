@@ -76,7 +76,6 @@
     "oxc-minify": "^0.152.0",
     "oxfmt": "^0.71.0",
     "oxlint": "^1.86.0",
-    "plain-draggable": "^2.5.15",
     "playwright-core": "^1.63.0",
     "test-page-loader": "^1.0.8",
     "typescript": "^6.0.3"

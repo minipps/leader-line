@@ -13,7 +13,7 @@ const ROOT_DIR = path.join(TEST_DIR, '..');
 const SRC_DIR = path.join(ROOT_DIR, 'src');
 // The built files, for `test/build`.
 const PACKAGE_FILES = ['leader-line.min.js', 'leader-line.mjs'];
-const MODULE_PACKAGES = ['jasmine-core', 'test-page-loader', 'plain-draggable'];
+const MODULE_PACKAGES = ['jasmine-core', 'test-page-loader'];
 
 const packageDir = (name) => path.join(ROOT_DIR, 'node_modules', name);
 const ALIASES = [

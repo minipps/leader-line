@@ -1,4 +1,4 @@
-/* global LeaderLine:false, PlainDraggable:false */
+/* global LeaderLine:false */
 
 window.traceLog.enabled = true;
 window.addEventListener('load', function() {
@@ -9,10 +9,20 @@ window.addEventListener('load', function() {
       color: 'rgba(255, 0, 0, 0.5)', endPlug: 'disc', endPlugSize: 4
     });
 
-  new PlainDraggable(anchor1, { // eslint-disable-line no-new
-    onMove: function() { ll.position(); },
-    zIndex: false
-  });
+  // Drag the anchor, relative to its offset parent `#view`.
+  anchor1.addEventListener('pointerdown', function(event) {
+    var dx = event.clientX - anchor1.offsetLeft, dy = event.clientY - anchor1.offsetTop;
+    function move(event) {
+      anchor1.style.left = event.clientX - dx + 'px';
+      anchor1.style.top = event.clientY - dy + 'px';
+      ll.position();
+    }
+    anchor1.setPointerCapture(event.pointerId);
+    anchor1.addEventListener('pointermove', move, false);
+    anchor1.addEventListener('pointerup', function() {
+      anchor1.removeEventListener('pointermove', move, false);
+    }, {once: true});
+  }, false);
 
   // switcher - label
   (function() {
