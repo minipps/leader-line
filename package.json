@@ -71,7 +71,6 @@
   },
   "devDependencies": {
     "@e18e/eslint-plugin": "^0.8.1",
-    "htmlclean": "^3.0.8",
     "jasmine-core": "^7.0.2",
     "oxc-minify": "^0.152.0",
     "oxfmt": "^0.71.0",
