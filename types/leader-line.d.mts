@@ -176,15 +176,17 @@ declare class LeaderLine {
   static areaAnchor(
     element: Element,
     shape: LeaderLine.AreaAnchorOptions['shape'],
-    options?: LeaderLine.AreaAnchorOptions
+    options?: LeaderLine.AreaAnchorOptions,
   ): LeaderLine.Attachment;
 
-  static mouseHoverAnchor(options: LeaderLine.MouseHoverAnchorOptions & { element: HTMLElement }): LeaderLine.Attachment;
+  static mouseHoverAnchor(
+    options: LeaderLine.MouseHoverAnchorOptions & { element: HTMLElement },
+  ): LeaderLine.Attachment;
   static mouseHoverAnchor(element: HTMLElement, options?: LeaderLine.MouseHoverAnchorOptions): LeaderLine.Attachment;
   static mouseHoverAnchor(
     element: HTMLElement,
     showEffectName: LeaderLine.ShowEffectName,
-    options?: LeaderLine.MouseHoverAnchorOptions
+    options?: LeaderLine.MouseHoverAnchorOptions,
   ): LeaderLine.Attachment;
 
   static captionLabel(options: LeaderLine.CaptionLabelOptions & { text: string }): LeaderLine.Attachment;

@@ -140,10 +140,24 @@
     pathDataPolyfill = @INCLUDE[code:pathDataPolyfill]@,
     [DEBUG/] */
     pathDataPolyfill = window.pathDataPolyfill, // [DEBUG/]
-    /* [DEBUG/]
-    AnimEvent = @INCLUDE[code:AnimEvent]@,
-    [DEBUG/] */
-    AnimEvent = window.AnimEvent, // [DEBUG/]
+
+    /**
+     * Wrap `listener` so that it runs at most once per animation frame, with the last event.
+     * @param {function} listener - Event listener.
+     * @returns {function} Event listener to register.
+     */
+    frameThrottle = function(listener) {
+      var requestId, lastEvent;
+      return function(event) {
+        lastEvent = event;
+        if (requestId == null) {
+          requestId = window.requestAnimationFrame(function() {
+            requestId = null;
+            listener(lastEvent);
+          });
+        }
+      };
+    },
 
     /** @typedef {{hasSE, hasProps, iniValue}} StatConf */
     /** @type {{statId: string, StatConf}} */
@@ -5181,7 +5195,7 @@
 
   // Update position automatically
   LeaderLine.positionByWindowResize = true;
-  window.addEventListener('resize', AnimEvent.add(function(/* event */) {
+  window.addEventListener('resize', frameThrottle(function(/* event */) {
     traceLog.add('<positionByWindowResize>'); // [DEBUG/]
     // var eventWindow;
     if (LeaderLine.positionByWindowResize) {

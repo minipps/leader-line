@@ -1,22 +1,45 @@
 {
   "name": "leader-line-plus",
   "version": "1.1.0",
-  "title": "LeaderLine",
   "description": "Draw a leader line in your web page. A maintained fork of anseki/leader-line with ES module and TypeScript support.",
-  "type": "commonjs",
   "keywords": [
+    "arrow",
+    "attention",
+    "bubble",
+    "esm",
+    "highlight",
     "leader",
     "line",
     "markup",
-    "arrow",
-    "attention",
-    "highlight",
     "spotlight",
-    "bubble",
     "svg",
-    "esm",
     "typescript"
   ],
+  "homepage": "https://github.com/minipps/leader-line#readme",
+  "bugs": "https://github.com/minipps/leader-line/issues",
+  "license": "MIT",
+  "author": {
+    "name": "anseki",
+    "url": "https://github.com/anseki"
+  },
+  "contributors": [
+    {
+      "name": "minipps",
+      "url": "https://github.com/minipps"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/minipps/leader-line.git"
+  },
+  "files": [
+    "leader-line.min.js",
+    "leader-line.mjs",
+    "types/leader-line.d.ts",
+    "types/leader-line.d.mts"
+  ],
+  "type": "commonjs",
+  "sideEffects": true,
   "main": "leader-line.min.js",
   "module": "leader-line.mjs",
   "types": "types/leader-line.d.ts",
@@ -33,48 +56,28 @@
     },
     "./package.json": "./package.json"
   },
-  "files": [
-    "leader-line.min.js",
-    "leader-line.mjs",
-    "types/leader-line.d.ts",
-    "types/leader-line.d.mts"
-  ],
-  "sideEffects": true,
-  "devDependencies": {
-    "anim-event": "^1.0.16",
-    "cheerio": "^1.0.0-rc.9",
-    "clean-css": "^5.1.2",
-    "grunt": "^1.4.1",
-    "grunt-task-helper": "^0.3.10",
-    "htmlclean": "^3.0.8",
-    "jasmine-core": "^3.7.1",
-    "log4js": "^6.4.0",
-    "node-static-alias": "^1.1.2",
-    "plain-draggable": "^2.5.12",
-    "pre-proc": "^1.0.2",
-    "test-page-loader": "^1.0.8",
-    "uglify-js": "^3.13.7"
-  },
   "scripts": {
-    "build": "grunt build",
-    "test": "node ./test/httpd",
-    "prepublishOnly": "grunt build"
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/test.mjs",
+    "test:serve": "node test/server.mjs",
+    "build:defs": "node scripts/build-defs.mjs",
+    "e18e": "npx -y @e18e/cli@^0.7.0 analyze",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "check": "npm run lint && npm run format:check && npm run build && npm test",
+    "prepublishOnly": "npm run build"
   },
-  "homepage": "https://github.com/minipps/leader-line#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/minipps/leader-line.git"
+  "devDependencies": {
+    "@e18e/eslint-plugin": "^0.8.1",
+    "htmlclean": "^3.0.8",
+    "jasmine-core": "^7.0.2",
+    "oxc-minify": "^0.152.0",
+    "oxfmt": "^0.71.0",
+    "oxlint": "^1.86.0",
+    "plain-draggable": "^2.5.15",
+    "playwright-core": "^1.63.0",
+    "test-page-loader": "^1.0.8"
   },
-  "bugs": "https://github.com/minipps/leader-line/issues",
-  "license": "MIT",
-  "author": {
-    "name": "anseki",
-    "url": "https://github.com/anseki"
-  },
-  "contributors": [
-    {
-      "name": "minipps",
-      "url": "https://github.com/minipps"
-    }
-  ]
+  "title": "LeaderLine"
 }
