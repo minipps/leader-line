@@ -1,8 +1,28 @@
 # LeaderLine
 
-[![npm](https://img.shields.io/npm/v/leader-line.svg)](https://www.npmjs.com/package/leader-line) [![GitHub issues](https://img.shields.io/github/issues/anseki/leader-line.svg)](https://github.com/anseki/leader-line/issues) [![dependencies](https://img.shields.io/badge/dependencies-No%20dependency-brightgreen.svg)](package.json) [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/@minipps/leader-line.svg)](https://www.npmjs.com/package/@minipps/leader-line) [![GitHub issues](https://img.shields.io/github/issues/minipps/leader-line.svg)](https://github.com/minipps/leader-line/issues) [![dependencies](https://img.shields.io/badge/dependencies-No%20dependency-brightgreen.svg)](package.json) [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Draw a leader line in your web page.
+
+## About this fork
+
+This is a fork of [anseki/leader-line](https://github.com/anseki/leader-line), which is archived. The API is unchanged; this fork adds:
+
+- **A fix for lines drawn off-screen.** The `viewBox` of the SVGs and plug markers is written to the attribute instead of only through `viewBox.baseVal`, which some browsers do not tie to the attribute. Without it the SVG had no user space of its own and the line was painted offset by the position of the SVG.
+- **An ES module** (`leader-line.mjs`), next to the original script, which is now UMD: it still defines the `LeaderLine` global in a classic `<script>`, and exports it to CommonJS and AMD.
+- **TypeScript declarations** for the whole API, for both `import` and `require`.
+
+```sh
+npm install @minipps/leader-line
+```
+
+```js
+import LeaderLine from '@minipps/leader-line';
+
+const line = new LeaderLine(startElement, endElement, {color: 'coral', path: 'fluid'});
+```
+
+The module reads `document` and listens to `window` as soon as it is loaded, so load it in the browser only (not during server-side rendering). Everything below is the upstream documentation and applies unchanged.
 
 **<a href="https://anseki.github.io/leader-line/">Document and Examples https://anseki.github.io/leader-line/</a>**
 
