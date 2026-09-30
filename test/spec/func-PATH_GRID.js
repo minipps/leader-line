@@ -1,5 +1,5 @@
 /* eslint-env jasmine */
-/* global getSource:false, testCases:false */
+/* global getSourceExport:false, testCases:false */
 
 describe('func-PATH_GRID', function() {
   'use strict';
@@ -28,7 +28,7 @@ describe('func-PATH_GRID', function() {
   }
 
   beforeAll(function(done) {
-    getSource('./spec/func/PATH_GRID', function(error, source) {
+    getSourceExport('PATH_GRID', function(error, source) {
       if (error) { throw error; }
       func = eval('(' + source + ')'); // eslint-disable-line no-eval
       done();

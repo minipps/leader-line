@@ -2127,7 +2127,7 @@ var LeaderLine = (() => {
 
         case PATH_FLUID:
         case PATH_MAGNET:
-          /* @EXPORT[file:../test/spec/func/PATH_FLUID]@ */ ((socketGravitySE) => {
+          /* @EXPORT[test:PATH_FLUID]@ */ ((socketGravitySE) => {
             const cx = [],
               cy = [];
             curSocketXYSE.forEach((socketXY, i) => {
@@ -2204,7 +2204,7 @@ var LeaderLine = (() => {
           break;
 
         case PATH_GRID:
-          /* @EXPORT[file:../test/spec/func/PATH_GRID]@ */ (() => {
+          /* @EXPORT[test:PATH_GRID]@ */ (() => {
             const DIR_UP = 1;
 
             const DIR_RIGHT = 2;
