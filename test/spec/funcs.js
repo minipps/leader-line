@@ -441,14 +441,42 @@ describe('funcs', function() {
 
   });
 
+  describe('getAllPathListLen()', function() {
+    var getAllPathListLen, pageDone;
+
+    beforeAll(function(beforeDone) {
+      loadPage('spec/funcs/funcs.html', function(window, document, body, done) {
+        getAllPathListLen = window.getAllPathListLen;
+        pageDone = done;
+        beforeDone();
+      });
+    });
+
+    afterAll(function() {
+      pageDone();
+    });
+
+    it('sums straight and cubic segments', function() {
+      var len = getAllPathListLen([
+        [{x: 0, y: 0}, {x: 3, y: 4}], // straight: 5
+        [{x: 3, y: 4}, {x: 3, y: 10}], // straight: 6
+        [{x: 3, y: 10}, {x: 3, y: 12}, {x: 3, y: 14}, {x: 3, y: 16}] // cubic along a line: 6
+      ]);
+      expect(len.segsLen.length).toBe(3);
+      expect(len.segsLen[0]).toBeCloseTo(5, 6);
+      expect(len.segsLen[1]).toBeCloseTo(6, 6);
+      expect(len.segsLen[2]).toBeCloseTo(6, 3);
+      expect(len.lenAll).toBeCloseTo(17, 3);
+    });
+  });
+
   describe('isElement()', function() {
-    var document, isElement, IS_TRIDENT, IS_WEBKIT, pageDone;
+    var document, isElement, IS_WEBKIT, pageDone;
 
     beforeAll(function(beforeDone) {
       loadPage('spec/funcs/isElement.html', function(window, frmDocument, body, done) {
         document = frmDocument;
         isElement = window.isElement;
-        IS_TRIDENT = window.IS_TRIDENT;
         IS_WEBKIT = window.IS_WEBKIT;
         pageDone = done;
         beforeDone();
@@ -516,19 +544,13 @@ describe('funcs', function() {
 
     it('HTMLOptionsCollection:false', function() {
       var element = document.getElementsByTagName('select')[0].options;
-      if (!IS_TRIDENT) { // [TRIDENT] `<select>.options` returns itself.
-        expect(Object.prototype.toString.apply(element)).toBe('[object HTMLOptionsCollection]');
-        expect(isElement(element)).toBe(false);
-      } else {
-        expect(true).toBe(true); // dummy
-      }
+      expect(Object.prototype.toString.apply(element)).toBe('[object HTMLOptionsCollection]');
+      expect(isElement(element)).toBe(false);
     });
 
     it('HTMLFormControlsCollection:false', function() {
       var element = document.forms[0].elements;
-      if (!IS_TRIDENT) { // [TRIDENT] The class is not supported.
-        expect(Object.prototype.toString.apply(element)).toBe('[object HTMLFormControlsCollection]');
-      }
+      expect(Object.prototype.toString.apply(element)).toBe('[object HTMLFormControlsCollection]');
       expect(isElement(element)).toBe(false);
     });
 
@@ -624,19 +646,13 @@ describe('funcs', function() {
 
     it('Another window HTMLOptionsCollection:false', function() {
       var element = document.getElementById('iframe-1').contentDocument.getElementsByTagName('select')[0].options;
-      if (!IS_TRIDENT) { // [TRIDENT] `<select>.options` returns itself.
-        expect(Object.prototype.toString.apply(element)).toBe('[object HTMLOptionsCollection]');
-        expect(isElement(element)).toBe(false);
-      } else {
-        expect(true).toBe(true); // dummy
-      }
+      expect(Object.prototype.toString.apply(element)).toBe('[object HTMLOptionsCollection]');
+      expect(isElement(element)).toBe(false);
     });
 
     it('Another window HTMLFormControlsCollection:false', function() {
       var element = document.getElementById('iframe-1').contentDocument.forms[0].elements;
-      if (!IS_TRIDENT) { // [TRIDENT] The class is not supported.
-        expect(Object.prototype.toString.apply(element)).toBe('[object HTMLFormControlsCollection]');
-      }
+      expect(Object.prototype.toString.apply(element)).toBe('[object HTMLFormControlsCollection]');
       expect(isElement(element)).toBe(false);
     });
 

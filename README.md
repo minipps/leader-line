@@ -6,11 +6,7 @@ Draw a leader line in your web page.
 
 ## About this fork
 
-This is a fork of [anseki/leader-line](https://github.com/anseki/leader-line), which is archived. The API is unchanged; this fork adds:
-
-- **A fix for lines drawn off-screen.** The `viewBox` of the SVGs and plug markers is written to the attribute instead of only through `viewBox.baseVal`, which some browsers do not tie to the attribute. Without it the SVG had no user space of its own and the line was painted offset by the position of the SVG.
-- **An ES module** (`leader-line.mjs`), next to the original script, which is now UMD: it still defines the `LeaderLine` global in a classic `<script>`, and exports it to CommonJS and AMD.
-- **TypeScript declarations** for the whole API, for both `import` and `require`.
+This is a fork of [anseki/leader-line](https://github.com/anseki/leader-line), which is archived. Its API still works as documented below; this fork adds to it.
 
 ```sh
 npm install leader-line-plus
@@ -19,10 +15,56 @@ npm install leader-line-plus
 ```js
 import LeaderLine from 'leader-line-plus';
 
-const line = new LeaderLine(startElement, endElement, {color: 'coral', path: 'fluid'});
+const line = new LeaderLine(startElement, endElement, {color: 'coral', autoPosition: true});
+line.addEventListener('position', (event) => console.log('moved', event.detail.line));
 ```
 
-The module reads `document` and listens to `window` as soon as it is loaded, so load it in the browser only (not during server-side rendering). Everything below is the upstream documentation and applies unchanged.
+The module reads `document` and listens to `window` as soon as it is loaded, so load it in the browser only (not during server-side rendering).
+
+### Browsers
+
+2.x supports current browsers: Chrome, Edge, Firefox and Safari. Internet Explorer and the old EdgeHTML-based Edge are not supported any more; use 1.x for them.
+
+### What it adds
+
+- **Modules and types.** An ES module (`leader-line.mjs`), and `leader-line.min.js`, now UMD: it still defines the `LeaderLine` global in a classic `<script>`, and exports it to CommonJS and AMD. TypeScript declarations for the whole API, for both `import` and `require`.
+- **Lines drawn where they belong.** The `viewBox` of the SVGs is written to the attribute instead of only through `viewBox.baseVal`, which some browsers do not tie to the attribute; without it a line could be painted offset by the position of its SVG, often outside the viewport.
+- **`autoPosition`** (option, default `false`). The line repositions itself when its elements move, at most once per frame: when they or their ancestors are resized or change `class` or `style`, when a container scrolls, and frame by frame during CSS transitions. No need to call `position()` from your own observers.
+- **Events.** Each line is an event target, and `LeaderLine` receives the events of every line. They are `CustomEvent`s whose `detail.line` is the line:
+
+  | Event | When | `detail` |
+  | --- | --- | --- |
+  | `update` | something was redrawn | `changed`: `'line'`, `'plug'`, `'position'`, `'path'`, `'viewBox'`... |
+  | `position` | the path changed | |
+  | `options` | options were set, by `setOptions()` or a property | `options`: their names |
+  | `show`, `hide` | `show()`/`hide()` changed the state; the effect starts | `effect`, `animOptions` |
+  | `shown`, `hidden` | the effect ran to its end | `effect` |
+  | `remove` | `remove()`, before the line is removed | |
+
+  ```js
+  LeaderLine.addEventListener('update', (event) => metrics.count('leader-line.update', event.detail.changed));
+  ```
+
+- **`flow`** (effect). Dashes, dots by default, that move along the line at a constant speed, e.g. to show traffic on a cable: `flow: true`, or `{len, gap, speed, reverse}` (`len`: 0 for dots; `gap`: 3 times `size`; `speed`: 80 px/s). It takes over from `dash` while it is on.
+- **`smoothPosition`** (option, default `false`). The line moves to its new position instead of jumping: `true` (`{duration: 150, timing: 'ease-out'}`) or [animation options](#animation-options).
+- **Reduced motion.** When the user prefers reduced motion, effects show and hide at once, dashes and flows stay still and lines jump to their new position. `LeaderLine.reducedMotion` is `'auto'` by default; set it to `true` or `false` to override the preference.
+- **Native animations.** `fade`, the `dash` animation and `flow` run on the Web Animations API, without JavaScript on every frame.
+
+### Development
+
+Node.js 22 or later. `npm test` runs the specs in headless Chromium (`npx playwright install chromium` first, or set `CHROME` to a Chromium binary).
+
+| Script | |
+| --- | --- |
+| `npm run build` | `leader-line.min.js`, `leader-line.mjs` and `types/leader-line.d.mts` from `src/` |
+| `npm run build:defs` | `src/defs.js`, after changing `src/symbols.html` or `src/leader-line.css` |
+| `npm test` | the Jasmine specs of the source, and a smoke test of the built files |
+| `npm run test:types` | type-checks a consumer of the declarations, as ESM and as CommonJS |
+| `npm run test:serve` | serves `test/` at http://localhost:8080/ to run the specs and the visual tests in a browser |
+| `npm run lint`, `npm run format` | oxlint (with the e18e rules) and oxfmt |
+| `npm run check` | all of the above |
+
+Everything below is the upstream documentation.
 
 **<a href="https://anseki.github.io/leader-line/">Document and Examples https://anseki.github.io/leader-line/</a>**
 

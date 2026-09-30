@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 120,
+  "singleQuote": true,
+  "ignorePatterns": [
+    "leader-line.min.js",
+    "leader-line.mjs",
+    "package-lock.json",
+    "README.md",
+    "src/defs.js",
+    "src/symbols.html",
+    "src/symbols.json",
+    "test/**/*.js",
+    "test/**/*.html",
+    "test/**/*.css",
+    "test/**/*.scss",
+    "!test/build/**",
+    "!test/reporter.js"
+  ],
+  "overrides": [
+    {
+      "files": ["src/**/*.js"],
+      "options": {
+        "trailingComma": "none"
+      }
+    }
+  ]
+}

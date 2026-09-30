@@ -8,6 +8,19 @@ describe('window resize', function() {
   var window, document, traceLog, pageDone, frame, orgWidth, orgHeight, pathDataHasChanged,
     iframeDoc, ll1, ll2, ll3, ll4;
 
+  // The `resize` event of the frame is dispatched at a rendering opportunity, which is not
+  // bounded by a fixed delay: wait until the handler has run (it logs even when disabled).
+  function afterResize(callback) {
+    var start = Date.now();
+    (function check() {
+      if (traceLog.getTaggedLog('positionByWindowResize') != null || Date.now() - start > 1000) {
+        setTimeout(callback, 1000 / 60);
+      } else {
+        setTimeout(check, 1000 / 60);
+      }
+    })();
+  }
+
   beforeAll(function(beforeDone) {
     loadPage('spec/win-resize/page.html', function(frmWindow, frmDocument, body, done) {
       window = frmWindow;
@@ -26,12 +39,21 @@ describe('window resize', function() {
       traceLog.enabled = true;
       pathDataHasChanged = window.pathDataHasChanged;
       pageDone = done;
-      if (window.IS_TRIDENT) { // Trident fires first `resize` event when a page was loaded.
-        setTimeout(beforeDone, 1000 / 60);
-      } else {
-        beforeDone();
-      }
+      beforeDone();
     }, 'window resize');
+  });
+
+  // Specs run in random order: the one that disables it must not leak into the others.
+  afterEach(function(done) {
+    var iframeStyle = document.getElementById('iframe1').style;
+    window.LeaderLine.positionByWindowResize = true;
+    iframeStyle.width = iframeStyle.height = ''; // back to the size in the style sheet
+    frame.style.width = orgWidth;
+    frame.style.height = orgHeight;
+    setTimeout(function() {
+      [ll1, ll2, ll3, ll4].forEach(function(ll) { ll.position(); });
+      done();
+    }, 100);
   });
 
   afterAll(function() {
@@ -51,14 +73,14 @@ describe('window resize', function() {
     frameBBox = frame.getBoundingClientRect();
     traceLog.clear();
     frame.style.width = (frameBBox.width - 50) + 'px';
-    setTimeout(function() {
+    afterResize(function() {
       expect(traceLog.getTaggedLog('positionByWindowResize')).toEqual(['id=1', 'id=2', 'id=3', 'id=4']);
       expect(pathDataHasChanged(pathData1, window.insProps[ll1._id].linePath.getPathData())).toBe(true);
       expect(pathDataHasChanged(pathData2, window.insProps[ll2._id].linePath.getPathData())).toBe(true);
       expect(pathDataHasChanged(pathData3, window.insProps[ll3._id].linePath.getPathData())).toBe(true);
       expect(pathDataHasChanged(pathData4, window.insProps[ll4._id].linePath.getPathData())).toBe(true);
       done();
-    }, 100);
+    });
   });
 
   it('no-update position when sub window is resized', function(done) {
@@ -99,7 +121,7 @@ describe('window resize', function() {
     frameBBox = frame.getBoundingClientRect();
     traceLog.clear();
     frame.style.width = (frameBBox.width - 50) + 'px';
-    setTimeout(function() {
+    afterResize(function() {
       expect(traceLog.getTaggedLog('positionByWindowResize')).toEqual(['id=1', 'id=2', 'id=3', 'id=4']);
       expect(traceLog.getTaggedLog('updatePosition')).toEqual([
         'position_socketXYSE[0]', 'position_socketXYSE[1]', 'new-position', // ll1
@@ -111,7 +133,7 @@ describe('window resize', function() {
       expect(pathDataHasChanged(pathData3, window.insProps[ll3._id].linePath.getPathData())).toBe(false); // No change
       expect(pathDataHasChanged(pathData4, window.insProps[ll4._id].linePath.getPathData())).toBe(false); // No change
       done();
-    }, 100);
+    });
   });
 
   it('disabled positionByWindowResize', function(done) {
@@ -129,7 +151,7 @@ describe('window resize', function() {
     traceLog.clear();
     window.LeaderLine.positionByWindowResize = false;
     frame.style.width = (frameBBox.width + 70) + 'px';
-    setTimeout(function() {
+    afterResize(function() {
       expect(elm1.getBoundingClientRect().left).not.toBe(elm1Left);
       expect(elm2.getBoundingClientRect().left).not.toBe(elm2Left);
       expect(traceLog.getTaggedLog('positionByWindowResize')).toEqual([]);
@@ -138,6 +160,6 @@ describe('window resize', function() {
       expect(pathDataHasChanged(pathData3, window.insProps[ll3._id].linePath.getPathData())).toBe(false);
       expect(pathDataHasChanged(pathData4, window.insProps[ll4._id].linePath.getPathData())).toBe(false);
       done();
-    }, 100);
+    });
   });
 });

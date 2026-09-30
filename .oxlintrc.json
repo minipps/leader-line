@@ -1,0 +1,81 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["unicorn", "oxc", "promise"],
+  "jsPlugins": ["@e18e/eslint-plugin"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    // `vars: local`: the top-level declarations of `src/` are the globals of classic scripts.
+    "no-unused-vars": ["warn", { "vars": "local" }],
+    "no-undef": "error",
+    "e18e/prefer-array-at": "error",
+    "e18e/prefer-array-fill": "error",
+    "e18e/prefer-includes": "error",
+    "e18e/prefer-array-to-reversed": "error",
+    "e18e/prefer-array-to-sorted": "error",
+    "e18e/prefer-array-to-spliced": "error",
+    "e18e/prefer-exponentiation-operator": "error",
+    "e18e/prefer-nullish-coalescing": "error",
+    "e18e/prefer-object-has-own": "error",
+    "e18e/prefer-spread-syntax": "error",
+    "e18e/prefer-url-canparse": "error",
+    // Map.prototype.getOrInsert is too new for the supported browsers.
+    // "e18e/prefer-get-or-insert": "error",
+    "e18e/ban-dependencies": "error",
+    "e18e/prefer-array-from-map": "error",
+    "e18e/prefer-array-some": "error",
+    "e18e/prefer-timer-args": "error",
+    "e18e/prefer-date-now": "error",
+    "e18e/prefer-regex-test": "error",
+    "e18e/prefer-static-regex": "error",
+    "e18e/prefer-inline-equality": "error",
+    "e18e/prefer-string-fromcharcode": "error",
+    "e18e/prefer-includes-over-regex-test": "error",
+    "e18e/prefer-charcode-at-in-loop": "error",
+    "e18e/prefer-throw-if-no-entry": "error",
+    "e18e/no-delete-property": "error",
+    "e18e/prefer-flatmap-over-map-flat": "error",
+    "e18e/prefer-slice-over-split-index": "error",
+    "e18e/no-spread-in-reduce": "error",
+    "e18e/prefer-static-collator": "error"
+  },
+  "globals": {
+    // The debug hooks of the test pages, removed by the build.
+    "traceLog": "readonly"
+  },
+  "env": {
+    "browser": true,
+    "es2022": true
+  },
+  "ignorePatterns": [
+    "node_modules/**",
+    "leader-line.min.js",
+    "leader-line.mjs",
+    "src/defs.js",
+    "test/**/*.js",
+    "!test/build/**",
+    "!test/reporter.js"
+  ],
+  "overrides": [
+    {
+      "files": ["scripts/**", "test/server.mjs"],
+      "env": { "node": true, "browser": false }
+    },
+    {
+      // The library is one IIFE that runs once: its top-level regular expressions are already
+      // compiled once, which this rule cannot tell from a function called on every update.
+      "files": ["src/**/*.js"],
+      "rules": { "e18e/prefer-static-regex": "off" }
+    },
+    {
+      // `readSymbols()` runs in the page.
+      "files": ["scripts/build-defs.mjs"],
+      "env": { "node": true, "browser": true }
+    },
+    {
+      "files": ["test/build/**", "test/reporter.js"],
+      "env": { "browser": true, "jasmine": true }
+    }
+  ]
+}

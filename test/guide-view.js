@@ -1,4 +1,3 @@
-/* global forceReflow:false */
 /* exported guideView, pathData2BBox */
 /* eslint no-underscore-dangle: [2, {"allow": ["_id"]}] */
 
@@ -36,9 +35,6 @@ var guideView = (function() {
 
   var SVG_NS = 'http://www.w3.org/2000/svg',
     PATH_C_SIZE = 5,
-    IS_EDGE = '-ms-scroll-limit' in document.documentElement.style &&
-      '-ms-ime-align' in document.documentElement.style && !window.navigator.msPointerEnabled,
-    IS_TRIDENT = !IS_EDGE && !!document.uniqueID, // Future Edge might support `document.uniqueID`.
     guideElements = [];
 
   function addXMarker(point, pathSegs) {
@@ -183,8 +179,7 @@ var guideView = (function() {
           // Copy elements in <mask> to <g>
           elmGs[maskId] = maskSvg.appendChild(baseDocument.createElementNS(SVG_NS, 'g'));
           Array.prototype.slice.call(mask.childNodes).forEach(function(node) {
-            var copiedNode = elmGs[maskId].appendChild(node.cloneNode());
-            if (IS_TRIDENT) { forceReflow(copiedNode); }
+            elmGs[maskId].appendChild(node.cloneNode());
           });
 
           elmGs[maskId].style.display = 'none';
