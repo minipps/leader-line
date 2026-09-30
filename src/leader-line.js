@@ -747,6 +747,20 @@
   }
 
   /**
+   * Apply `viewBox` to an element that has the attribute.
+   * Writing to `viewBox.baseVal` is not enough: a browser may hand back a rect that is
+   * not tied to the attribute (e.g. when it was absent), and then the element is left
+   * without a user space of its own and the shapes in it are painted offset by the
+   * position of the element. The attribute is always honored.
+   * @param {SVGElement} element - `<svg>` or `<marker>` element.
+   * @param {{x: number, y: number, width: number, height: number}} bBox - The rect.
+   * @returns {void}
+   */
+  function setViewBox(element, bBox) {
+    element.setAttribute('viewBox', [bBox.x, bBox.y, bBox.width, bBox.height].join(' '));
+  }
+
+  /**
    * Apply `orient` (and `viewBox`) to `marker`.
    * @param {props} props - `props` of `LeaderLine` instance.
    * @param {SVGMarkerElement} marker - Target `<marker>` element.
@@ -758,7 +772,7 @@
    * @returns {void}
    */
   function setMarkerOrient(props, marker, orient, bBox, svg, shape, marked) {
-    var transform, viewBox, reverseView;
+    var transform, reverseView;
     // `setOrientToAuto()`, `setOrientToAngle()`, `orientType` and `orientAngle` of
     // `SVGMarkerElement` don't work in browsers other than Chrome.
     if (orient === 'auto-start-reverse') {
@@ -780,16 +794,12 @@
       if (svg2SupportedReverse === false) { shape.transform.baseVal.clear(); }
     }
 
-    viewBox = marker.viewBox.baseVal;
-    if (reverseView) {
-      viewBox.x = -bBox.right;
-      viewBox.y = -bBox.bottom;
-    } else {
-      viewBox.x = bBox.left;
-      viewBox.y = bBox.top;
-    }
-    viewBox.width = bBox.width;
-    viewBox.height = bBox.height;
+    setViewBox(marker, {
+      x: reverseView ? -bBox.right : bBox.left,
+      y: reverseView ? -bBox.bottom : bBox.top,
+      width: bBox.width,
+      height: bBox.height
+    });
 
     // [TRIDENT] markerOrient is not updated when plugSE is changed
     if (IS_TRIDENT) { forceReflowAdd(props, marked); }
@@ -937,9 +947,7 @@
       var element = defs.appendChild(baseDocument.createElementNS(SVG_NS, 'marker'));
       element.id = id;
       element.markerUnits.baseVal = SVGMarkerElement.SVG_MARKERUNITS_STROKEWIDTH;
-      if (!element.viewBox.baseVal) {
-        element.setAttribute('viewBox', '0 0 0 0'); // for Firefox bug
-      }
+      element.setAttribute('viewBox', '0 0 0 0');
       return element;
     }
 
@@ -972,7 +980,7 @@
     // Main SVG
     props.svg = svg = baseDocument.createElementNS(SVG_NS, 'svg');
     svg.className.baseVal = APP_ID;
-    if (!svg.viewBox.baseVal) { svg.setAttribute('viewBox', '0 0 0 0'); } // for Firefox bug
+    svg.setAttribute('viewBox', '0 0 0 0');
     props.defs = defs = svg.appendChild(baseDocument.createElementNS(SVG_NS, 'defs'));
 
     props.linePath = element = defs.appendChild(baseDocument.createElementNS(SVG_NS, 'path'));
@@ -2055,7 +2063,7 @@
     var curStats = props.curStats, aplStats = props.aplStats,
       curEdge = curStats.path_edge, padding, edge,
       curBBox = curStats.viewBox_bBox, aplBBox = aplStats.viewBox_bBox,
-      viewBox = props.svg.viewBox.baseVal, styles = props.svg.style,
+      styles = props.svg.style,
       updated = false;
 
     // Expand bBox with `line` or symbols, and event
@@ -2076,12 +2084,13 @@
       var value;
       if ((value = curBBox[boxKey]) !== aplBBox[boxKey]) {
         traceLog.add(boxKey); // [DEBUG/]
-        viewBox[boxKey] = aplBBox[boxKey] = value;
+        aplBBox[boxKey] = value;
         styles[BBOX_PROP[boxKey]] = value +
           (boxKey === 'x' || boxKey === 'y' ? props.bodyOffset[boxKey] : 0) + 'px';
         updated = true;
       }
     });
+    if (updated) { setViewBox(props.svg, aplBBox); }
 
     if (!updated) { traceLog.add('not-updated'); } // [DEBUG/]
     traceLog.add('</updateViewBox>'); // [DEBUG/]
@@ -3768,7 +3777,7 @@
         baseDocument = attachProps.element.ownerDocument;
         attachProps.svg = svg = baseDocument.createElementNS(SVG_NS, 'svg');
         svg.className.baseVal = APP_ID + '-areaAnchor';
-        if (!svg.viewBox.baseVal) { svg.setAttribute('viewBox', '0 0 0 0'); } // for Firefox bug
+        svg.setAttribute('viewBox', '0 0 0 0');
         attachProps.path = svg.appendChild(baseDocument.createElementNS(SVG_NS, 'path'));
         attachProps.path.style.fill = attachProps.fill || 'none';
         attachProps.isShown = false;
@@ -4129,7 +4138,7 @@
         // ViewBox
         (function() {
           var curVBBBox = curStats.viewBoxBBox, aplVBBBox = aplStats.viewBoxBBox,
-            viewBox = attachProps.svg.viewBox.baseVal, styles = attachProps.svg.style;
+            styles = attachProps.svg.style, viewBoxUpdated = false;
           curVBBBox.x = curStats.bBoxRel.left + elementBBox.left;
           curVBBBox.y = curStats.bBoxRel.top + elementBBox.top;
           curVBBBox.width = curStats.bBoxRel.width;
@@ -4137,11 +4146,13 @@
           ['x', 'y', 'width', 'height'].forEach(function(boxKey) {
             if ((value = curVBBBox[boxKey]) !== aplVBBBox[boxKey]) {
               traceLog.add(boxKey); // [DEBUG/]
-              viewBox[boxKey] = aplVBBBox[boxKey] = value;
+              aplVBBBox[boxKey] = value;
               styles[BBOX_PROP[boxKey]] = value +
                 (boxKey === 'x' || boxKey === 'y' ? attachProps.bodyOffset[boxKey] : 0) + 'px';
+              viewBoxUpdated = true;
             }
           });
+          if (viewBoxUpdated) { setViewBox(attachProps.svg, aplVBBBox); }
         })();
 
         traceLog.add('</ATTACHMENTS.areaAnchor.update>'); // [DEBUG/]
